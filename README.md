@@ -1,159 +1,58 @@
-# Turborepo starter
+# Centralised exchange
 
-This Turborepo starter is maintained by the Turborepo core team.
+I happen to learn some Finance terms before building this, here are some
 
-## Using this example
+- Limit Order - Buy/sell an asset at a particular price, the trade might not execute immediately.
+- Market Order - Buy/sell an asset at the best available price, trade will happen immediately.
+- Order Book - List of all buy and sell orders, sorted by price. 
+- Liquidity - How easily an asset can be bought/sold. More liquid an exchange is, the better is the exchange 
+- Spread - Difference between the highest buy price and lowest sell price, lesser the spread, more the liquidity.
+- Maker / Market maker - someone who adds liquidity, by adding orders on both sides, in order for trades to be executed smoothly, companies like Citadel provides these making, in return they get better prices, lesser trading fees etc. 
+- Slippage - Difference between expected price and the actual price, may arise due to latency, or other reasons. We can put an upper cap.
+- Leverage - Borrowing money to trade bigger positions, higher the leverage, your position in the asset becomes higher
+- Margin - The amount we put against getting leverage, once the margin we put is exhausted, our leveraged position is closed.
+- Arbitrage - Buying low on one market, selling high on another for profit.
+- Limit price - Even while making a market order, an upper cap to the price of asset is automatically put in order to get the asset at a fair price. This is also known as quote of the order. 
+- Price of an asset - is the price at which the last trade of that asset happened.
+- Depth - shows quantity of orders (both buy and sell) available at a particular time
+- Ticker - just a snapshot of the market at a particular instance of time
 
-Run the following command:
+## Project Architecture
 
-```sh
-npx create-turbo@latest
-```
+![Architecture](./Architecture.png)
 
-## What's inside?
+## About
 
-This Turborepo includes the following packages/apps:
+Centralised exchanges are fascinating. This repo is my naive attempt, to mimic the architecture of a trading exchange. I am using a distributed
+system approach, to keep things peristant, scalable and fast. 
 
-### Apps and Packages
+A primary metric in these systems is the trade execution time. I was able to achieve sub 10ms latency running my app locally, which is considered good.
 
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
+### Components Breakdown
 
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
+- **Backend API (TypeScript)**  
+  → Entry point for all client actions.  
+  → Forwards trade/order requests to Redis Queue and handles responses through Pub/Sub.
 
-### Utilities
+- **Redis Queue**  
+  → Message queue ensuring asynchronous, high-throughput communication between backend and engine.
 
-This Turborepo has some additional tools already setup for you:
+- **Engine**  
+  → Core trading logic lives here.  
+  → Maintains in-memory **order books**, and user balances,  matches buy/sell orders, and publishes trade events.
 
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
+- **Pub/Sub System (Redis)**  
+  → Facilitates real-time communication between backend, engine, WebSocket server, and database processor.
 
-### Build
+- **WebSocket Server**  
+  → Streams live tickers, trades, and order book updates directly to browsers.
 
-To build all apps and packages, run the following command:
+- **DB Processor**  
+  → Listens to trade events via Pub/Sub and updates the database asynchronously.
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
+- **Database (Postgres)**  
+  → Persistent store for trades.
 
-```sh
-cd my-turborepo
-turbo build
-```
-
-Without global `turbo`, use your package manager:
-
-```sh
-cd my-turborepo
-npx turbo build
-pnpm dlx turbo build
-pnpm exec turbo build
-```
-
-You can build a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
-
-```sh
-turbo build --filter=docs
-```
-
-Without global `turbo`:
-
-```sh
-npx turbo build --filter=docs
-pnpm exec turbo build --filter=docs
-pnpm exec turbo build --filter=docs
-```
-
-### Develop
-
-To develop all apps and packages, run the following command:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
-```sh
-cd my-turborepo
-turbo dev
-```
-
-Without global `turbo`, use your package manager:
-
-```sh
-cd my-turborepo
-npx turbo dev
-pnpm exec turbo dev
-pnpm exec turbo dev
-```
-
-You can develop a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
-
-```sh
-turbo dev --filter=web
-```
-
-Without global `turbo`:
-
-```sh
-npx turbo dev --filter=web
-pnpm exec turbo dev --filter=web
-pnpm exec turbo dev --filter=web
-```
-
-### Remote Caching
-
-> [!TIP]
-> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
-
-Turborepo can use a technique known as [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
-
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following commands:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
-```sh
-cd my-turborepo
-turbo login
-```
-
-Without global `turbo`, use your package manager:
-
-```sh
-cd my-turborepo
-npx turbo login
-pnpm exec turbo login
-pnpm exec turbo login
-```
-
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
-
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
-
-```sh
-turbo link
-```
-
-Without global `turbo`:
-
-```sh
-npx turbo link
-pnpm exec turbo link
-pnpm exec turbo link
-```
-
-## Useful Links
-
-Learn more about the power of Turborepo:
-
-- [Tasks](https://turborepo.dev/docs/crafting-your-repository/running-tasks)
-- [Caching](https://turborepo.dev/docs/crafting-your-repository/caching)
-- [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching)
-- [Filtering](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters)
-- [Configuration Options](https://turborepo.dev/docs/reference/configuration)
-- [CLI Usage](https://turborepo.dev/docs/reference/command-line-reference)
+- Docker 
+ -> For running the entire app, run `docker compose up --build`
+---
