@@ -1,7 +1,6 @@
 {
-  "name": "api",
+  "name": "engine",
   "version": "1.0.0",
-  "type": "module",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -10,14 +9,8 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "devDependencies": {
-    "@types/bcrypt": "^6.0.0",
-    "typescript": "^7.0.2"
-  },
   "dependencies": {
-    "@repo/db": "workspace:^",
     "@types/express": "^5.0.6",
-    "bcrypt": "^6.0.0",
-    "express": "^5.2.1"
+    "typescript": "^7.0.2"
   }
 }

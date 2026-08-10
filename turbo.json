@@ -2,6 +2,10 @@
   "$schema": "https://turborepo.dev/schema.json",
   "ui": "tui",
   "tasks": {
+    "db:generate": {
+      "cache": false,
+      "outputs": ["packages/db/src/generated/**"]
+    },
     "build": {
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],

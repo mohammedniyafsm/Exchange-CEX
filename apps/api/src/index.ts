@@ -1,5 +1,5 @@
 import express, { type Request, type Response } from "express";
-import AuthRouter from "./auth/authRouter.js";
+import AuthRouter from "./router/auth/authRouter.js";
 
 
 const app = express();
