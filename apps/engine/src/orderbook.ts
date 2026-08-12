@@ -173,4 +173,26 @@ export class orderBook {
 
         return false;
     }
+
+    getDepth(): { asks: { price: number; quantity: number }[]; bids: { price: number; quantity: number }[] } {
+        const asksMap = new Map<number, number>();
+        for (const order of this.asks) {
+            asksMap.set(order.price, (asksMap.get(order.price) ?? 0) + order.quantity);
+        }
+
+        const bidsMap = new Map<number, number>();
+        for (const order of this.bids) {
+            bidsMap.set(order.price, (bidsMap.get(order.price) ?? 0) + order.quantity);
+        }
+
+        const asks = Array.from(asksMap.entries())
+            .map(([price, quantity]) => ({ price, quantity }))
+            .sort((a, b) => a.price - b.price);
+
+        const bids = Array.from(bidsMap.entries())
+            .map(([price, quantity]) => ({ price, quantity }))
+            .sort((a, b) => b.price - a.price);
+
+        return { asks, bids };
+    }
 }
