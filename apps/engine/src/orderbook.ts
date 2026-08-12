@@ -195,4 +195,10 @@ export class orderBook {
 
         return { asks, bids };
     }
+
+    getOpenOrders(userId: string): Order[] {
+        return this.bids.filter(o => o.userId === userId).concat(
+            this.asks.filter(o => o.userId === userId)
+        );
+    }
 }
