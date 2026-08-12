@@ -1,3 +1,5 @@
+import { BalanceManager } from "./engine.js";
+
 export interface Order {
     id: string;
     quantity: number;
@@ -22,14 +24,30 @@ export interface Trade {
 export class orderBook {
     asks: Order[] = [];
     bids: Order[] = [];
+    balanceManager: BalanceManager;
+
+    constructor(balanceManager: BalanceManager) {
+        this.balanceManager = balanceManager;
+    }
 
     createOrder(order: Order) {
 
         if (order.side == 'BUY') {
+            let cost = order.price * order.quantity;
+            let locked = this.balanceManager.lockBalance(order.userId, 'USDC', cost);
+            if (!locked) {
+                console.log('order rejected: insufficient USDC');
+                return [];
+            }
             return this.matchBuys(order);
         }
 
         if (order.side == 'SELL') {
+            let locked = this.balanceManager.lockBalance(order.userId, 'SOL', order.quantity);
+            if (!locked) {
+                console.log('order rejected: insufficient SOL');
+                return [];
+            }
             return this.matchSells(order);
         }
     }
@@ -63,9 +81,15 @@ export class orderBook {
             remainingQuantity -= maxQunatity;
             ask.quantity -= maxQunatity;
 
+            this.balanceManager.transferBalance(ask.userId, order.userId, "SOL", maxQunatity)
+            this.balanceManager.transferBalance(order.userId, ask.userId, "USDC", ask.price * maxQunatity)
+
+            this.balanceManager.unlockBalance(order.userId, "USDC", order.price * maxQunatity - ask.price * maxQunatity);
 
             if (ask?.quantity == 0) {
                 this.asks.shift();
+            } else {
+                i++;
             }
 
         }
@@ -104,8 +128,14 @@ export class orderBook {
             remainingQuantity -= maxQunatity;
             bid.quantity -= maxQunatity;
 
+            this.balanceManager.transferBalance(order.userId, bid.userId, "SOL", maxQunatity)
+            this.balanceManager.transferBalance(bid.userId, order.userId, "USDC", bid.price * maxQunatity)
+
+
             if (bid.quantity == 0) {
                 this.bids.shift();
+            } else {
+                i++;
             }
 
         }
@@ -118,5 +148,29 @@ export class orderBook {
         }
 
         return Trade;
+    }
+
+    cancelOrder(order: Order): boolean {
+        const { id: orderId, side: orderSide, userId } = order;
+
+        if (orderSide === "BUY") {
+            const bidIndex = this.bids.findIndex(o => o.id === orderId && o.userId === userId);
+            if (bidIndex !== -1) {
+                const resting = this.bids[bidIndex]!;
+                this.balanceManager.unlockBalance(resting.userId, "USDC", resting.price * resting.quantity);
+                this.bids.splice(bidIndex, 1);
+                return true;
+            }
+        } else {
+            const askIndex = this.asks.findIndex(o => o.id === orderId && o.userId === userId);
+            if (askIndex !== -1) {
+                const resting = this.asks[askIndex]!;
+                this.balanceManager.unlockBalance(resting.userId, "SOL", resting.quantity);
+                this.asks.splice(askIndex, 1);
+                return true;
+            }
+        }
+
+        return false;
     }
 }

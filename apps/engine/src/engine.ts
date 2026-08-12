@@ -4,7 +4,7 @@ type Balance = {
 }
 
 export class BalanceManager {
-     balance: Map<string, Map<string, Balance>> = new Map();
+    balance: Map<string, Map<string, Balance>> = new Map();
 
     setBalance(userId: string, asset: string, amount: number): void {
         if (!this.balance.get(userId)) {
@@ -46,9 +46,19 @@ export class BalanceManager {
 
     transferBalance(fromUserId: string, toUserId: string, asset: string, amount: number): void {
         const fromBal = this.balance.get(fromUserId)?.get(asset);
-        const toBal = this.balance.get(toUserId)?.get(asset);
+        if (!fromBal) {
+            console.log(`transfer failed: ${fromUserId} has no ${asset} balance`);
+            return; 
+        }
 
-        if (!fromBal || !toBal) return;
+        if (!this.balance.has(toUserId)) {
+            this.balance.set(toUserId, new Map());
+        }
+        const toUserBalances = this.balance.get(toUserId)!;
+        if (!toUserBalances.has(asset)) {
+            toUserBalances.set(asset, { available: 0, locked: 0 });
+        }
+        const toBal = toUserBalances.get(asset)!; 
 
         fromBal.locked -= amount;
         toBal.available += amount;
