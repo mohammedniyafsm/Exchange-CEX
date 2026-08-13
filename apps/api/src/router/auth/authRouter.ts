@@ -1,58 +1,61 @@
 import { Router, type Request, type Response } from "express";
 import type { Router as RouterType } from "express";
-import { prisma } from "@repo/db";
-import bcrypt from "bcrypt";
+import { authService } from "./authService.js";
 
 const AuthRouter: RouterType = Router();
 
-AuthRouter.post('/signup', async (req: Request, res: Response) => {
-    try {
-        const { password, email } = req.body;
+AuthRouter.post("/signup", async (req: Request, res: Response) => {
+  try {
+    const { email, password } = req.body;
 
-        const hashedPassword = await bcrypt.hash(password, 10);
-
-        await prisma.user.create({
-            data: { email, password: hashedPassword }
-        });
-
-        res.status(200).json({
-            message: "Account is Created Successfully"
-        });
-    } catch (error) {
-        res.status(500).json({
-            message: "Internal Server Error"
-        });
+    if (!email || !password) {
+      res.status(400).json({
+        success: false,
+        message: "Email and password are required"
+      });
+      return;
     }
+
+    const result = await authService.signup(email, password);
+
+    if (result.success) {
+      res.status(201).json(result);
+    } else {
+      res.status(400).json(result);
+    }
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Internal server error"
+    });
+  }
 });
 
-AuthRouter.post('/login', async (req: Request, res: Response) => {
-    try {
-        const { email, password } = req.body;
+AuthRouter.post("/signin", async (req: Request, res: Response) => {
+  try {
+    const { email, password } = req.body;
 
-        const user = await prisma.user.findUnique({
-            where: { email }
-        });
-
-        if (!user) {
-            res.status(401).json({ message: "Invalid credentials" });
-            return;
-        }
-
-        const isValid = await bcrypt.compare(password, user.password);
-
-        if (!isValid) {
-            res.status(401).json({ message: "Invalid credentials" });
-            return;
-        }
-
-        res.status(200).json({
-            message: "Logged in Successfully"
-        });
-    } catch (error) {
-        res.status(500).json({
-            message: "Internal Server Error"
-        });
+    if (!email || !password) {
+      res.status(400).json({
+        success: false,
+        message: "Email and password are required"
+      });
+      return;
     }
+
+    const result = await authService.signin(email, password);
+
+    if (result.success) {
+      res.status(200).json(result);
+    } else {
+      res.status(401).json(result);
+    }
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Internal server error"
+    });
+  }
 });
 
 export default AuthRouter;
