@@ -2,6 +2,7 @@ import { Router, type Request, type Response } from "express";
 import type { Router as RouterType } from "express";
 import { authMiddleware, type AuthRequest } from "../../middleware/authMiddleware.js";
 import { orderService } from "./orderService.js";
+import { RedisManager } from "../../redis/redis.js";
 
 const OrderRouter: RouterType = Router();
 
@@ -20,7 +21,10 @@ OrderRouter.post("/", async (req: AuthRequest, res: Response) => {
       return;
     }
 
-    const result = await orderService.createOrder(userId, pair, side, quantity, price);
+    const result : any = await RedisManager.getInstance().sendAndWait({
+      type: "CREATE_ORDER",
+      data: { userId, pair, side, quantity, price }
+    })
 
     if (result.success) {
       res.status(201).json(result);
