@@ -1,0 +1,29 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "tsc -b && node ./dist/index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@repo/db": "workspace:*",
+    "@types/express": "^5.0.6",
+    "@types/node": "^22.15.3",
+    "bcrypt": "^5.1.1",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.2",
+    "redis": "^5.0.0",
+    "typescript": "^5.9.2",
+    "uuid": "^11.0.0"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^5.0.2",
+    "@types/jsonwebtoken": "^9.0.2",
+    "@types/uuid": "^10.0.0"
+  }
+}

@@ -39,7 +39,11 @@ export class orderBook {
                 console.log('order rejected: insufficient USDC');
                 return [];
             }
-            return this.matchBuys(order);
+            const trades = this.matchBuys(order);
+            console.log("Trade", trades);
+            console.log("ASK", this.asks);
+            console.log("BID", this.bids);
+            return trades;
         }
 
         if (order.side == 'SELL') {
@@ -48,7 +52,11 @@ export class orderBook {
                 console.log('order rejected: insufficient SOL');
                 return [];
             }
-            return this.matchSells(order);
+            const trades = this.matchSells(order);
+            console.log("Trade", trades);
+            console.log("ASK", this.asks);
+            console.log("BID", this.bids);
+            return trades;
         }
     }
 
@@ -76,7 +84,6 @@ export class orderBook {
                 price: ask?.price,
                 quantity: maxQunatity
             })
-
 
             remainingQuantity -= maxQunatity;
             ask.quantity -= maxQunatity;
