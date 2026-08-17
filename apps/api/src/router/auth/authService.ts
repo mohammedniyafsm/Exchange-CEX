@@ -32,11 +32,21 @@ export const authService = {
       // Hash password
       const hashedPassword = await bcrypt.hash(password, 10);
 
+      // Generate random balances
+      const randomSol = Number((Math.random() * 90 + 10).toFixed(2));
+      const randomUsd = Number((Math.random() * 9000 + 1000).toFixed(2));
+
       // Create user
       const user = await prisma.user.create({
         data: {
           email,
-          password: hashedPassword
+          password: hashedPassword,
+          balances: {
+            create: [
+              { asset: "SOL", available: randomSol },
+              { asset: "USD", available: randomUsd }
+            ]
+          }
         }
       });
 

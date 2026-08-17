@@ -1,10 +1,54 @@
+import type { Side } from "./orderbook.js";
+
+
 type Balance = {
     available: number,
     locked: number,
 }
 
+export class MatchEngine {
+    private balance: Map<string, Map<string, Balance>> = new Map();
+
+    constructor(balance: Map<string, Map<string, Balance>>) {
+        this.balance = balance;
+    }
+
+    process({ clientId, message }) {
+
+        switch (message.type) {
+            case "CREATE_ORDER":
+                const { userId, asset, price, quantity } = message.data;
+
+        }
+    }
+
+    createOrder(orderId: string, userId: string, pair: string, side: Side, quantity: number, price: number) {
+
+    }
+}
+
+
+
+
+
+
+type OnAvailableChange = (userId: string, asset: string, newAvailable: number) => void;
+
 export class BalanceManager {
     balance: Map<string, Map<string, Balance>> = new Map();
+    private onAvailableChange?: OnAvailableChange;
+
+    setOnAvailableChange(callback: OnAvailableChange) {
+        this.onAvailableChange = callback;
+    }
+
+    private notifyChange(userId: string, asset: string) {
+        const newAvailable = this.balance.get(userId)?.get(asset)?.available;
+        if (newAvailable !== undefined && this.onAvailableChange) {
+            this.onAvailableChange(userId, asset, newAvailable);
+        }
+    }
+
 
     setBalance(userId: string, asset: string, amount: number): void {
         if (!this.balance.get(userId)) {
@@ -48,7 +92,7 @@ export class BalanceManager {
         const fromBal = this.balance.get(fromUserId)?.get(asset);
         if (!fromBal) {
             console.log(`transfer failed: ${fromUserId} has no ${asset} balance`);
-            return; 
+            return;
         }
 
         if (!this.balance.has(toUserId)) {
@@ -58,9 +102,11 @@ export class BalanceManager {
         if (!toUserBalances.has(asset)) {
             toUserBalances.set(asset, { available: 0, locked: 0 });
         }
-        const toBal = toUserBalances.get(asset)!; 
+        const toBal = toUserBalances.get(asset)!;
 
         fromBal.locked -= amount;
         toBal.available += amount;
     }
 }
+
+
