@@ -25,25 +25,28 @@ export class orderBook {
     asks: Order[] = [];
     bids: Order[] = [];
     balanceManager: BalanceManager;
+    baseAsset: string; // in SOL_USDC , SOL is the base
+    quoteAsset: string = "USDC";  // USDC in SOL_USDC 
+    lastTrade: number | 0 ;
+    currentPrice: number | 0;                      
 
-    constructor(balanceManager: BalanceManager) {
+    constructor(balanceManager: BalanceManager, baseAsset: string, asks: Order[], bids: Order[], lastTrade: number, currentPrice: number) {
         this.balanceManager = balanceManager;
+        this.baseAsset = baseAsset;
+        this.asks = asks;
+        this.bids = bids;
+        this.lastTrade = lastTrade;
+        this.currentPrice = currentPrice;
+    }
+
+    getTicker() {
+        return `${this.baseAsset}_${this.quoteAsset}`;
     }
 
     createOrder(order: Order) {
 
         if (order.side == 'BUY') {
-            let cost = order.price * order.quantity;
-            let locked = this.balanceManager.lockBalance(order.userId, 'USDC', cost);
-            if (!locked) {
-                console.log('order rejected: insufficient USDC');
-                return [];
-            }
-            const trades = this.matchBuys(order);
-            console.log("Trade", trades);
-            console.log("ASK", this.asks);
-            console.log("BID", this.bids);
-            return trades;
+            const {} = this.matchBuys(order);
         }
 
         if (order.side == 'SELL') {
