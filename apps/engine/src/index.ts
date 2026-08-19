@@ -11,15 +11,14 @@ interface Result {
     }
 }
 
+async function main() {
+    const engine = new MatchEngine();
 
-async function startConsumer() {
     console.log("Engine consumer started, waiting for orders...");
-
     while (true) {
         const result = await RedisManager.getInstance().getNextOrder();
         if (!result) continue;
-
-        MatchEngine.process({ clientId : result.key, message : result.element })
-
+        engine.process({ clientId: result.key, message: JSON.parse(result.element) });
     }
 }
+main();

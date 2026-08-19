@@ -18,12 +18,11 @@ export class MatchEngine {
     private balance: Map<string, UserBalance> = new Map();
     private orderBooks: any = [];
 
-    constructor(balance: Map<string, UserBalance>) {
-        this.balance = balance;
+    constructor() {
+        
     }
 
-    process({ clientId : any, message : any }) {
-
+    process({ clientId, message }: { clientId: string; message: any }) {
         switch (message.type) {
             case "CREATE_ORDER":
                 try {
