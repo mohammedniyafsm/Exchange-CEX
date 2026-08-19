@@ -1,5 +1,3 @@
-import { BalanceManager } from "./engine.js";
-
 export interface Order {
     id: string;
     quantity: number;
@@ -22,18 +20,15 @@ export interface Trade {
     quantity: number;
 }
 
-
 export class orderBook {
     asks: Order[] = [];
     bids: Order[] = [];
-    balanceManager: BalanceManager;
     baseAsset: string; // in SOL_USDC , SOL is the base
     quoteAsset: string = "USDC";  // USDC in SOL_USDC 
     lastTrade: number | 0;
     currentPrice: number | 0;
 
-    constructor(balanceManager: BalanceManager, baseAsset: string, asks: Order[], bids: Order[], lastTrade: number, currentPrice: number) {
-        this.balanceManager = balanceManager;
+    constructor( baseAsset: string, asks: Order[], bids: Order[], lastTrade: number, currentPrice: number) {
         this.baseAsset = baseAsset;
         this.asks = asks;
         this.bids = bids;
@@ -59,7 +54,7 @@ export class orderBook {
                 }
 
                 this.bids.push(order);
-                this.bids.sort((a, b) => a.price - b.price);
+                this.bids.sort((a, b) => b.price - a.price);
                 return ({
                     fills,
                     executed,
@@ -77,7 +72,7 @@ export class orderBook {
                 }
 
                 this.asks.push(order);
-                this.asks.sort((a, b) => b.price - a.price);
+                this.asks.sort((a, b) => a.price - b.price);
                 return ({
                     fills,
                     executed,
@@ -177,55 +172,55 @@ export class orderBook {
         }
     }
 
-    cancelOrder(order: Order): boolean {
-        const { id: orderId, side: orderSide, userId } = order;
+    // cancelOrder(order: Order): boolean {
+    //     const { id: orderId, side: orderSide, userId } = order;
 
-        if (orderSide === "BUY") {
-            const bidIndex = this.bids.findIndex(o => o.id === orderId && o.userId === userId);
-            if (bidIndex !== -1) {
-                const resting = this.bids[bidIndex]!;
-                this.balanceManager.unlockBalance(resting.userId, "USDC", resting.price * resting.quantity);
-                this.bids.splice(bidIndex, 1);
-                return true;
-            }
-        } else {
-            const askIndex = this.asks.findIndex(o => o.id === orderId && o.userId === userId);
-            if (askIndex !== -1) {
-                const resting = this.asks[askIndex]!;
-                this.balanceManager.unlockBalance(resting.userId, "SOL", resting.quantity);
-                this.asks.splice(askIndex, 1);
-                return true;
-            }
-        }
+    //     if (orderSide === "BUY") {
+    //         const bidIndex = this.bids.findIndex(o => o.id === orderId && o.userId === userId);
+    //         if (bidIndex !== -1) {
+    //             const resting = this.bids[bidIndex]!;
+    //             this.balanceManager.unlockBalance(resting.userId, "USDC", resting.price * resting.quantity);
+    //             this.bids.splice(bidIndex, 1);
+    //             return true;
+    //         }
+    //     } else {
+    //         const askIndex = this.asks.findIndex(o => o.id === orderId && o.userId === userId);
+    //         if (askIndex !== -1) {
+    //             const resting = this.asks[askIndex]!;
+    //             this.balanceManager.unlockBalance(resting.userId, "SOL", resting.quantity);
+    //             this.asks.splice(askIndex, 1);
+    //             return true;
+    //         }
+    //     }
 
-        return false;
-    }
+    //     return false;
+    // }
 
-    getDepth(): { asks: { price: number; quantity: number }[]; bids: { price: number; quantity: number }[] } {
-        const asksMap = new Map<number, number>();
-        for (const order of this.asks) {
-            asksMap.set(order.price, (asksMap.get(order.price) ?? 0) + order.quantity);
-        }
+    // getDepth(): { asks: { price: number; quantity: number }[]; bids: { price: number; quantity: number }[] } {
+    //     const asksMap = new Map<number, number>();
+    //     for (const order of this.asks) {
+    //         asksMap.set(order.price, (asksMap.get(order.price) ?? 0) + order.quantity);
+    //     }
 
-        const bidsMap = new Map<number, number>();
-        for (const order of this.bids) {
-            bidsMap.set(order.price, (bidsMap.get(order.price) ?? 0) + order.quantity);
-        }
+    //     const bidsMap = new Map<number, number>();
+    //     for (const order of this.bids) {
+    //         bidsMap.set(order.price, (bidsMap.get(order.price) ?? 0) + order.quantity);
+    //     }
 
-        const asks = Array.from(asksMap.entries())
-            .map(([price, quantity]) => ({ price, quantity }))
-            .sort((a, b) => a.price - b.price);
+    //     const asks = Array.from(asksMap.entries())
+    //         .map(([price, quantity]) => ({ price, quantity }))
+    //         .sort((a, b) => a.price - b.price);
 
-        const bids = Array.from(bidsMap.entries())
-            .map(([price, quantity]) => ({ price, quantity }))
-            .sort((a, b) => b.price - a.price);
+    //     const bids = Array.from(bidsMap.entries())
+    //         .map(([price, quantity]) => ({ price, quantity }))
+    //         .sort((a, b) => b.price - a.price);
 
-        return { asks, bids };
-    }
+    //     return { asks, bids };
+    // }
 
-    getOpenOrders(userId: string): Order[] {
-        return this.bids.filter(o => o.userId === userId).concat(
-            this.asks.filter(o => o.userId === userId)
-        );
-    }
+    // getOpenOrders(userId: string): Order[] {
+    //     return this.bids.filter(o => o.userId === userId).concat(
+    //         this.asks.filter(o => o.userId === userId)
+    //     );
+    // }
 }

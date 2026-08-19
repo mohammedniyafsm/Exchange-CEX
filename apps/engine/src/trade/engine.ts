@@ -1,3 +1,4 @@
+import { RedisManager } from "../redis/redis.js";
 import type { Side } from "./orderbook.js";
 import { randomUUID } from "crypto";
 
@@ -10,6 +11,7 @@ type UserBalance = {
 }
 
 const BASE_CURRENCY = "USDC"
+type OnAvailableChange = (userId: string, asset: string, newAvailable: number) => void;
 
 
 export class MatchEngine {
@@ -20,12 +22,33 @@ export class MatchEngine {
         this.balance = balance;
     }
 
-    process({ clientId, message }) {
+    process({ clientId : any, message : any }) {
 
         switch (message.type) {
             case "CREATE_ORDER":
-                const { userId, asset, price, quantity } = message.data;
-
+                try {
+                    const { userId, asset, price, quantity, market, side } = message.data;
+                    const { executed, fills, orderId } = this.createOrder(userId, asset, price, quantity, market, side);
+                    RedisManager.getInstance().sendResult(clientId, {
+                        type: "ORDER_PLACED",
+                        payload: {
+                            orderId,
+                            executed,
+                            fills
+                        }
+                    })
+                } catch (error) {
+                    console.log("Error in creating order in the engine", error);
+                    RedisManager.getInstance().sendResult(clientId, {
+                        type: "ORDER_CANCELLED",
+                        payload: {
+                            orderId: "",
+                            executed: 0,
+                            remaining: 0
+                        }
+                    })
+                }
+                break;
         }
     }
 
@@ -47,9 +70,8 @@ export class MatchEngine {
         }
         const { fills, executed } = orderbook.createOrder(Order);
         this.updateFunds(userId, baseAsset, quoteAsset, side, fills, executed);
-
+        return { executed, fills, orderId: Order.orderId };
     }
-
 
     checkAndUpdateFund(userId: string, baseAsset: string, quoteAsset: string, price: string, quantity: string, side: Side) {
         let userBalance = this.balance.get(userId);
@@ -58,7 +80,7 @@ export class MatchEngine {
         }
 
         if (side === "BUY") {
-            if ((userBalance[quoteAsset]?.available | 0) < Number(price) * Number(quantity)) {
+            if ((userBalance[quoteAsset].available | 0) < Number(price) * Number(quantity)) {
                 throw new Error("Insufficient balance");
             }
             userBalance[quoteAsset]!.available -= Number(quantity) * Number(price);
@@ -73,99 +95,34 @@ export class MatchEngine {
         }
     }
 
-    updateFunds(userId: string, baseAsset: string, quoteAsset: string, side: string, fills: [], executed: string) {
-        try {
-            if (side === "BUY") {
-                
-            } else if (side === "SELL") {
+    updateFunds(userId: string, baseAsset: string, quoteAsset: string, side: string, fills: any[], executed: number) {
+        for (const fill of fills) {
+            const userBal = this.balance.get(userId);
+            const otherBal = this.balance.get(fill.otherUserId);
 
+            if (!userBal || !otherBal) {
+                console.log(`ERROR: missing balance for ${!userBal ? userId : fill.otherUserId}`);
+                continue;
             }
-        } catch (error) {
-            console.log("ERROR IN UPDATING FUNDS");
+            if (!userBal[baseAsset] || !userBal[quoteAsset] || !otherBal[baseAsset] || !otherBal[quoteAsset]) {
+                console.log("ERROR: missing asset entry in balance");
+                continue;
+            }
 
+            if (side === "BUY") {
+                otherBal[quoteAsset].available += fill.price * fill.quantity;
+                userBal[baseAsset].available += fill.quantity;
+                otherBal[baseAsset].locked -= fill.quantity;
+                userBal[quoteAsset].locked -= fill.price * fill.quantity;
+            } else if (side === "SELL") {
+                otherBal[baseAsset].available += fill.quantity;
+                userBal[quoteAsset].available += fill.quantity * fill.price;
+                otherBal[quoteAsset].locked -= fill.price * fill.quantity;
+                userBal[baseAsset].locked -= fill.quantity;
+            }
         }
     }
 
 
-
-
-
-
-type OnAvailableChange = (userId: string, asset: string, newAvailable: number) => void;
-
-export class BalanceManager {
-    balance: Map<string, Map<string, Balance>> = new Map();
-    private onAvailableChange?: OnAvailableChange;
-
-    setOnAvailableChange(callback: OnAvailableChange) {
-        this.onAvailableChange = callback;
-    }
-
-    private notifyChange(userId: string, asset: string) {
-        const newAvailable = this.balance.get(userId)?.get(asset)?.available;
-        if (newAvailable !== undefined && this.onAvailableChange) {
-            this.onAvailableChange(userId, asset, newAvailable);
-        }
-    }
-
-
-    setBalance(userId: string, asset: string, amount: number): void {
-        if (!this.balance.get(userId)) {
-            this.balance.set(userId, new Map());
-        }
-        let userBalance = this.balance.get(userId);
-        userBalance?.set(asset, {
-            available: amount,
-            locked: 0,
-        })
-    }
-
-    lockBalance(userId: string, asset: string, amount: number): boolean {
-
-        let userBalance = this.balance.get(userId);
-        if (!userBalance) return false;
-
-        let assestBalance = userBalance.get(asset);
-        if (!assestBalance) return false;
-
-        if (assestBalance.available >= amount) {
-            assestBalance.available -= amount;
-            assestBalance.locked += amount;
-            return true;
-        }
-        return false;
-    }
-
-    unlockBalance(userId: string, asset: string, amount: number): void {
-        const userBalances = this.balance.get(userId);
-        if (!userBalances) return;
-
-        const bal = userBalances.get(asset);
-        if (!bal) return;
-
-        bal.available += amount;
-        bal.locked -= amount;
-    }
-
-    transferBalance(fromUserId: string, toUserId: string, asset: string, amount: number): void {
-        const fromBal = this.balance.get(fromUserId)?.get(asset);
-        if (!fromBal) {
-            console.log(`transfer failed: ${fromUserId} has no ${asset} balance`);
-            return;
-        }
-
-        if (!this.balance.has(toUserId)) {
-            this.balance.set(toUserId, new Map());
-        }
-        const toUserBalances = this.balance.get(toUserId)!;
-        if (!toUserBalances.has(asset)) {
-            toUserBalances.set(asset, { available: 0, locked: 0 });
-        }
-        const toBal = toUserBalances.get(asset)!;
-
-        fromBal.locked -= amount;
-        toBal.available += amount;
-    }
 }
-
 
