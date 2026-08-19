@@ -6,6 +6,8 @@ export interface Order {
     price: number;
     side: Side;
     userId: string;
+    filled: number,
+    orderId: string,
 }
 
 export enum Side {
@@ -27,8 +29,8 @@ export class orderBook {
     balanceManager: BalanceManager;
     baseAsset: string; // in SOL_USDC , SOL is the base
     quoteAsset: string = "USDC";  // USDC in SOL_USDC 
-    lastTrade: number | 0 ;
-    currentPrice: number | 0;                      
+    lastTrade: number | 0;
+    currentPrice: number | 0;
 
     constructor(balanceManager: BalanceManager, baseAsset: string, asks: Order[], bids: Order[], lastTrade: number, currentPrice: number) {
         this.balanceManager = balanceManager;
@@ -44,120 +46,135 @@ export class orderBook {
     }
 
     createOrder(order: Order) {
+        try {
+            if (order.side == 'BUY') {
+                const { fills, executed } = this.matchBuys(order);
+                order.filled = executed;
 
-        if (order.side == 'BUY') {
-            const {} = this.matchBuys(order);
-        }
+                if (order.quantity === executed) {
+                    return ({
+                        fills,
+                        executed
+                    })
+                }
 
-        if (order.side == 'SELL') {
-            let locked = this.balanceManager.lockBalance(order.userId, 'SOL', order.quantity);
-            if (!locked) {
-                console.log('order rejected: insufficient SOL');
-                return [];
+                this.bids.push(order);
+                this.bids.sort((a, b) => a.price - b.price);
+                return ({
+                    fills,
+                    executed,
+                })
             }
-            const trades = this.matchSells(order);
-            console.log("Trade", trades);
-            console.log("ASK", this.asks);
-            console.log("BID", this.bids);
-            return trades;
+            else if (order.side == 'SELL') {
+                const { fills, executed } = this.matchSells(order);
+                order.filled = executed;
+
+                if (order.quantity === executed) {
+                    return ({
+                        fills,
+                        executed
+                    })
+                }
+
+                this.asks.push(order);
+                this.asks.sort((a, b) => b.price - a.price);
+                return ({
+                    fills,
+                    executed,
+                })
+
+            }
+        } catch (error) {
+            console.log("Error in creating order");
+            return;
         }
     }
 
     matchBuys(order: Order) {
+        let { userId, quantity, price, side, filled, orderId } = order;
+        let executed = 0;
+        let fills = [];
+        let touchedCount = 0; // track how many asks we actually touched
 
-        let Trade: Trade[] = [];
-        let remainingQuantity = order.quantity;
+        for (let i = 0; i < this.asks.length; i++) {
+            let ask = this.asks[i];
 
-        this.asks.sort((a, b) => a.price - b.price);
-
-        let i = 0;
-
-        while (remainingQuantity > 0 && i < this.asks.length) {
-            let ask = this.asks[i]!;
-
-            if (order.price < ask?.price) {
+            if (ask?.price! > price) {
                 break;
             }
 
-            let maxQunatity = Math.min(remainingQuantity, ask?.quantity);
-
-            Trade.push({
-                buyOrderId: order.id,
-                sellOrderId: ask?.id,
-                price: ask?.price,
-                quantity: maxQunatity
-            })
-
-            remainingQuantity -= maxQunatity;
-            ask.quantity -= maxQunatity;
-
-            this.balanceManager.transferBalance(ask.userId, order.userId, "SOL", maxQunatity)
-            this.balanceManager.transferBalance(order.userId, ask.userId, "USDC", ask.price * maxQunatity)
-
-            this.balanceManager.unlockBalance(order.userId, "USDC", order.price * maxQunatity - ask.price * maxQunatity);
-
-            if (ask?.quantity == 0) {
-                this.asks.shift();
-            } else {
-                i++;
+            if (executed < quantity) {
+                let filledQty = Math.min((quantity - executed), ask?.quantity!);
+                executed += filledQty;
+                ask?.filled += filledQty;
+                touchedCount++;
+                fills.push({
+                    price: ask?.price,
+                    quantity: filledQty,
+                    tradeId: this.lastTrade++,
+                    otherUserId: ask?.userId,
+                    marketOrderId: ask?.orderId,
+                })
             }
-
         }
 
-        if (remainingQuantity > 0) {
-            this.bids.push({
-                ...order,
-                quantity: remainingQuantity,
-            });
+        for (let i = 0; i < touchedCount; i++) {
+            let ask = this.asks[i];
+            if (ask?.filled === ask?.quantity) {
+                this.asks.splice(i, 1);
+                i--;
+                touchedCount--;
+            }
         }
 
-        return Trade;
+        return {
+            fills,
+            executed,
+        }
     }
 
     matchSells(order: Order) {
+        let { userId, quantity, price, side, filled, orderId } = order;
+        let executed = 0;
+        let fills = [];
+        let touchedCount = 0;
 
-        this.bids.sort((a, b) => b.price - a.price);
-        let remainingQuantity = order.quantity;
-        let i = 0;
-        let Trade: Trade[] = [];
-
-        while (remainingQuantity > 0 && i < this.bids.length) {
-
-            let bid = this.bids[i]!;
-
-            if (order.price > bid.price) break;
-            let maxQunatity = Math.min(bid?.quantity, remainingQuantity);
-
-            Trade.push({
-                buyOrderId: bid.id,
-                sellOrderId: order.id,
-                price: bid.price,
-                quantity: maxQunatity,
-            })
-
-            remainingQuantity -= maxQunatity;
-            bid.quantity -= maxQunatity;
-
-            this.balanceManager.transferBalance(order.userId, bid.userId, "SOL", maxQunatity)
-            this.balanceManager.transferBalance(bid.userId, order.userId, "USDC", bid.price * maxQunatity)
-
-
-            if (bid.quantity == 0) {
-                this.bids.shift();
-            } else {
-                i++;
+        for (let i = 0; i < this.bids.length; i++) {
+            let bid = this.bids[i];
+            if (price > bid?.price!) {
+                break;
             }
 
+            if (executed < quantity) {
+                let filledQty = Math.min((quantity - executed), bid?.quantity!);
+                executed += filledQty;
+                bid?.filled += filledQty;
+                touchedCount++;
+
+                fills.push({
+                    price: bid?.price,
+                    quantity: filledQty,
+                    tradeId: this.lastTrade++,
+                    otherUserId: bid?.userId,
+                    marketOrderId: bid?.orderId,
+                })
+
+            }
         }
 
-        if (remainingQuantity > 0) {
-            this.asks.push({
-                ...order,
-                quantity: remainingQuantity
-            })
+        for (let i = 0; i < touchedCount; i++) {
+            let bid = this.bids[i];
+            if (bid?.filled === bid?.quantity) {
+                this.bids.splice(i, 1);
+                i--;
+                touchedCount--;
+            }
         }
 
-        return Trade;
+        return {
+            fills,
+            executed,
+        }
     }
 
     cancelOrder(order: Order): boolean {

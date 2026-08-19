@@ -45,7 +45,8 @@ export class MatchEngine {
             filled: 0,
             orderId: randomUUID(),
         }
-        const { } = orderbook.createOrder(Order);
+        const { fills, executed } = orderbook.createOrder(Order);
+        this.updateFunds(userId, baseAsset, quoteAsset, side, fills, executed);
 
     }
 
@@ -69,6 +70,19 @@ export class MatchEngine {
             }
             userBalance[baseAsset]!.available -= Number(quantity);
             userBalance[baseAsset]!.locked += Number(quantity);
+        }
+    }
+
+    updateFunds(userId: string, baseAsset: string, quoteAsset: string, side: string, fills: [], executed: string) {
+        try {
+            if (side === "BUY") {
+                
+            } else if (side === "SELL") {
+
+            }
+        } catch (error) {
+            console.log("ERROR IN UPDATING FUNDS");
+
         }
     }
 
