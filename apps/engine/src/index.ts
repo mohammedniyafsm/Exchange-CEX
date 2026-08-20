@@ -18,7 +18,9 @@ async function main() {
     while (true) {
         const result = await RedisManager.getInstance().getNextOrder();
         if (!result) continue;
-        engine.process({ clientId: result.key, message: JSON.parse(result.element) });
+        const { clientId, message } = JSON.parse(result.element);
+
+        engine.process({ clientId,message });
     }
 }
 main();

@@ -19,7 +19,11 @@ export class MatchEngine {
     private orderBooks: any = [];
 
     constructor() {
-        
+        try {
+            
+        } catch (error) {
+            console.log("ERROR IN LOADING BALANCE FROM DATABASE");
+        }
     }
 
     process({ clientId, message }: { clientId: string; message: any }) {
