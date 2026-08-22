@@ -15,6 +15,7 @@ model User {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   balances  Balance[]
+  trades    Trade[]   @relation("UserTrades")
 }
 
 model Balance {
@@ -25,4 +26,17 @@ model Balance {
   user      User     @relation(fields: [userId], references: [id])
 
   @@id([userId, asset])
+}
+
+model Trade {
+  id            String   @id @default(cuid())
+  market        String   // e.g. "SOL_USDC"
+  price         Float
+  quantity      Float
+  buyOrderId    String
+  sellOrderId   String
+  buyerUserId   String
+  sellerUserId  String
+  createdAt     DateTime @default(now())
+  user          User     @relation("UserTrades", fields: [buyerUserId], references: [id])
 }

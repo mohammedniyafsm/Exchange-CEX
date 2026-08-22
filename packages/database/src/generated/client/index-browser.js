@@ -136,6 +136,18 @@ exports.Prisma.BalanceScalarFieldEnum = {
   updatedAt: 'updatedAt'
 };
 
+exports.Prisma.TradeScalarFieldEnum = {
+  id: 'id',
+  market: 'market',
+  price: 'price',
+  quantity: 'quantity',
+  buyOrderId: 'buyOrderId',
+  sellOrderId: 'sellOrderId',
+  buyerUserId: 'buyerUserId',
+  sellerUserId: 'sellerUserId',
+  createdAt: 'createdAt'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -154,7 +166,8 @@ exports.Prisma.NullsOrder = {
 
 exports.Prisma.ModelName = {
   User: 'User',
-  Balance: 'Balance'
+  Balance: 'Balance',
+  Trade: 'Trade'
 };
 
 /**

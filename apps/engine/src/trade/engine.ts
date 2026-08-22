@@ -1,5 +1,5 @@
 import { RedisManager } from "../redis/redis.js";
-import type { Side } from "./orderbook.js";
+import { orderBook, type Side } from "./orderbook.js";
 import { randomUUID } from "crypto";
 
 
@@ -19,10 +19,21 @@ export class MatchEngine {
     private orderBooks: any = [];
 
     constructor() {
+        let snapshot = null;
         try {
-            
+
         } catch (error) {
             console.log("ERROR IN LOADING BALANCE FROM DATABASE");
+        }
+
+        if (snapshot) {
+            const snapShotJson = JSON.parse(snapshot.toString());;
+            this.orderBooks = snapShotJson.orderbooks.map((o: any) => new orderBook(o.baseAsset, o.bids, o.asks, o.lastTradeId, o.currentPrice));
+            this.balance = new Map(snapShotJson.balances);
+
+        } else {
+            this.orderBooks = [new this.orderBooks(`SOL`, [], [], 0, 0)]
+            this.setBaseBalances();
         }
     }
 
@@ -126,6 +137,33 @@ export class MatchEngine {
         }
     }
 
+    saveSnapshot() {
+
+    }
+
+    setBaseBalances() {
+        this.balance.set("1", {
+            [BASE_CURRENCY]: {
+                available: 50000,
+                locked: 0
+            },
+            "SOL": {
+                available: 50000,
+                locked: 0
+            }
+        });
+
+        this.balance.set("2", {
+            [BASE_CURRENCY]: {
+                available: 50000,
+                locked: 0
+            },
+            "SOL": {
+                available: 50000,
+                locked: 0
+            }
+        });
+    }
 
 }
 
