@@ -1,11 +1,10 @@
 export interface Order {
-    id: string;
+    orderId: string,
     quantity: number;
     price: number;
     side: Side;
     userId: string;
     filled: number,
-    orderId: string,
 }
 
 export enum Side {
@@ -28,7 +27,7 @@ export class orderBook {
     lastTrade: number | 0;
     currentPrice: number | 0;
 
-    constructor( baseAsset: string, asks: Order[], bids: Order[], lastTrade: number, currentPrice: number) {
+    constructor(baseAsset: string, asks: Order[], bids: Order[], lastTrade: number, currentPrice: number) {
         this.baseAsset = baseAsset;
         this.asks = asks;
         this.bids = bids;
@@ -53,7 +52,7 @@ export class orderBook {
                     })
                 }
 
-                this.bids.push(order);
+                this.bids.push( );
                 this.bids.sort((a, b) => b.price - a.price);
                 return ({
                     fills,

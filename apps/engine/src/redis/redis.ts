@@ -29,12 +29,15 @@ export class RedisManager {
 
     public async getNextOrder() {
         const result = await this.client.brPop("messages", 0);
-        return result; 
+        return result;
     }
 
     public async sendResult(clientId: string, payload: any) {
         await this.publisher.publish(clientId, JSON.stringify(payload));
     }
 
+    public pushMessage(message: any) {
+        this.client.lPush("db_processor", JSON.stringify(message));
+    }
 
 }

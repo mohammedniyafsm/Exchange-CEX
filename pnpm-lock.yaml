@@ -58,6 +58,15 @@ importers:
         specifier: ^10.0.0
         version: 10.0.0
 
+  apps/db-worker:
+    dependencies:
+      redis:
+        specifier: ^6.2.1
+        version: 6.2.1
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+
   apps/engine:
     dependencies:
       '@repo/db':

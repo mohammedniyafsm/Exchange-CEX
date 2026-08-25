@@ -1,7 +1,8 @@
 import { readFileSync, writeFileSync } from "fs";
 import { RedisManager } from "../redis/redis.js";
-import { orderBook, type Side } from "./orderbook.js";
+import { orderBook, type Order, type Side } from "./orderbook.js";
 import { randomUUID } from "crypto";
+import type { OrderMessage } from "../index.js";
 
 
 type UserBalance = {
@@ -43,8 +44,8 @@ export class MatchEngine {
         switch (message.type) {
             case "CREATE_ORDER":
                 try {
-                    const { userId, price, quantity, side, pair } = message.data;
-                    const { executed, fills, orderId } = this.createOrder(userId, price, quantity, pair, side);
+                    const { userId, price, quantity, side, pair }: OrderMessage = message.data;
+                    const { executed, fills, orderId } = this.createOrder({ userId, price, quantity, pair, side });
                     console.log("Balances after order:", JSON.stringify(Array.from(this.balance.entries()), null, 2));
                     RedisManager.getInstance().sendResult(clientId, {
                         type: "ORDER_PLACED",
@@ -69,7 +70,7 @@ export class MatchEngine {
         }
     }
 
-    createOrder(userId: string, price: string, quantity: string, pair: string, side: Side) {
+    createOrder({ userId, price, quantity, pair, side }: OrderMessage) {
         let orderbook = this.orderBooks.find((o: any) => o.getTicker() === pair);
         let baseAsset = pair.split("_")[0]!;
         let quoteAsset = pair.split("_")[1]!;
@@ -77,20 +78,23 @@ export class MatchEngine {
             throw new Error("No orderbook found");
         }
         this.checkAndUpdateFund(userId, baseAsset, quoteAsset, price, quantity, side);
-        const Order = {
-            userId,
+        const Order: Order = {
+            orderId: randomUUID(),
             quantity: Number(quantity),
             price: Number(price),
             side,
+            userId,
             filled: 0,
-            orderId: randomUUID(),
         }
         const { fills, executed } = orderbook.createOrder(Order);
         this.updateFunds(userId, baseAsset, quoteAsset, side, fills, executed);
+        console.log(orderbook.asks);
+        console.log(orderbook.bids);
+        this.createDbTrades(fills, pair, userId);
         return { executed, fills, orderId: Order.orderId };
     }
 
-    checkAndUpdateFund(userId: string, baseAsset: string, quoteAsset: string, price: string, quantity: string, side: Side) {
+    checkAndUpdateFund(userId: string, baseAsset: string, quoteAsset: string, price: number, quantity: number, side: Side) {
         let userBalance = this.balance.get(userId);
         if (!userBalance) {
             throw new Error("User balance not found");
@@ -176,6 +180,24 @@ export class MatchEngine {
                 locked: 0
             }
         });
+    }
+
+    createDbTrades(fills: any, market: string, userId: string) {
+        console.log("db trade created");
+        fills.forEach((fill: any) => {
+            RedisManager.getInstance().pushMessage({
+                type: "TRADE_ADDED",
+                data: {
+                    market: pair,
+                    id: fill.tradeId.toString(),
+                    isBuyerMaker: fill.otherUserId === userId,
+                    price: fill.price,
+                    quantity: fill.qty.toString(),
+                    quoteQuantity: (fill.qty * Number(fill.price)).toString(),
+                    timestamp: Date.now()
+                }
+            })
+        })
     }
 
 }
