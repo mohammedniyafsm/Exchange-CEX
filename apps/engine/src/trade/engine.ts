@@ -1,3 +1,4 @@
+import { readFileSync, writeFileSync } from "fs";
 import { RedisManager } from "../redis/redis.js";
 import { orderBook, type Side } from "./orderbook.js";
 import { randomUUID } from "crypto";
@@ -21,18 +22,19 @@ export class MatchEngine {
     constructor() {
         let snapshot = null;
         try {
-
+            snapshot = readFileSync("./snapshot.json");
         } catch (error) {
-            console.log("ERROR IN LOADING BALANCE FROM DATABASE");
+            console.log("No snapshot found, starting fresh");
         }
 
         if (snapshot) {
-            const snapShotJson = JSON.parse(snapshot.toString());;
-            this.orderBooks = snapShotJson.orderbooks.map((o: any) => new orderBook(o.baseAsset, o.bids, o.asks, o.lastTradeId, o.currentPrice));
+            const snapShotJson = JSON.parse(snapshot.toString());
+            this.orderBooks = snapShotJson.orderbooks.map((o: any) =>
+                new orderBook(o.baseAsset, o.bids, o.asks, o.lastTradeId, o.currentPrice)
+            );
             this.balance = new Map(snapShotJson.balances);
-
         } else {
-            this.orderBooks = [new this.orderBooks(`SOL`, [], [], 0, 0)]
+            this.orderBooks = [new orderBook("SOL", [], [], 0, 0)];
             this.setBaseBalances();
         }
     }
@@ -41,8 +43,9 @@ export class MatchEngine {
         switch (message.type) {
             case "CREATE_ORDER":
                 try {
-                    const { userId, asset, price, quantity, market, side } = message.data;
-                    const { executed, fills, orderId } = this.createOrder(userId, asset, price, quantity, market, side);
+                    const { userId, price, quantity, side, pair } = message.data;
+                    const { executed, fills, orderId } = this.createOrder(userId, price, quantity, pair, side);
+                    console.log("Balances after order:", JSON.stringify(Array.from(this.balance.entries()), null, 2));
                     RedisManager.getInstance().sendResult(clientId, {
                         type: "ORDER_PLACED",
                         payload: {
@@ -66,10 +69,10 @@ export class MatchEngine {
         }
     }
 
-    createOrder(userId: string, price: string, quantity: string, market: string, side: "BUY" | "SELL") {
-        let orderbook = this.orderBooks.find((o: any) => o.getTicker() === market);
-        let baseAsset = market.split("_")[0];
-        let quoteAsset = market.split("_")[1];
+    createOrder(userId: string, price: string, quantity: string, pair: string, side: Side) {
+        let orderbook = this.orderBooks.find((o: any) => o.getTicker() === pair);
+        let baseAsset = pair.split("_")[0]!;
+        let quoteAsset = pair.split("_")[1]!;
         if (!orderbook) {
             throw new Error("No orderbook found");
         }
@@ -94,7 +97,7 @@ export class MatchEngine {
         }
 
         if (side === "BUY") {
-            if ((userBalance[quoteAsset].available | 0) < Number(price) * Number(quantity)) {
+            if ((userBalance[quoteAsset]!.available | 0) < Number(price) * Number(quantity)) {
                 throw new Error("Insufficient balance");
             }
             userBalance[quoteAsset]!.available -= Number(quantity) * Number(price);
@@ -138,7 +141,17 @@ export class MatchEngine {
     }
 
     saveSnapshot() {
-
+        const snapshot = {
+            orderbooks: this.orderBooks.map((o: any) => ({
+                baseAsset: o.baseAsset,
+                bids: o.bids,
+                asks: o.asks,
+                lastTradeId: o.lastTrade,
+                currentPrice: o.currentPrice,
+            })),
+            balances: Array.from(this.balance.entries()),
+        };
+        writeFileSync("./snapshot.json", JSON.stringify(snapshot));
     }
 
     setBaseBalances() {

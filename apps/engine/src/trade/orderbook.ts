@@ -92,7 +92,7 @@ export class orderBook {
         let touchedCount = 0; // track how many asks we actually touched
 
         for (let i = 0; i < this.asks.length; i++) {
-            let ask = this.asks[i];
+            let ask = this.asks[i]!;
 
             if (ask?.price! > price) {
                 break;
@@ -101,7 +101,7 @@ export class orderBook {
             if (executed < quantity) {
                 let filledQty = Math.min((quantity - executed), ask?.quantity!);
                 executed += filledQty;
-                ask?.filled += filledQty;
+                ask.filled += filledQty;
                 touchedCount++;
                 fills.push({
                     price: ask?.price,
@@ -135,15 +135,15 @@ export class orderBook {
         let touchedCount = 0;
 
         for (let i = 0; i < this.bids.length; i++) {
-            let bid = this.bids[i];
-            if (price > bid?.price!) {
+            let bid = this.bids[i]!;
+            if (price > bid?.price) {
                 break;
             }
 
             if (executed < quantity) {
                 let filledQty = Math.min((quantity - executed), bid?.quantity!);
                 executed += filledQty;
-                bid?.filled += filledQty;
+                bid.filled += filledQty;
                 touchedCount++;
 
                 fills.push({

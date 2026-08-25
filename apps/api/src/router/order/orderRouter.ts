@@ -5,12 +5,12 @@ import { RedisManager } from "../../redis/redis.js";
 
 const OrderRouter: RouterType = Router();
 
-OrderRouter.use(authMiddleware);
+// OrderRouter.use(authMiddleware);
 
 OrderRouter.post("/", async (req: AuthRequest, res: Response) => {
   try {
-    const { pair, side, quantity, price } = req.body;
-    const userId = req.userId!;
+    const { pair, side, quantity, price,userId } = req.body;
+    // const userId = req.userId!;
 
     if (!pair || !side || !quantity || !price) {
       res.status(400).json({
@@ -25,7 +25,7 @@ OrderRouter.post("/", async (req: AuthRequest, res: Response) => {
       data: { userId, pair, side, quantity, price }
     })
 
-    if (result.success) {
+    if (result.type === "ORDER_PLACED") {
       console.log(result)
       res.status(201).json(result);
     } else {
