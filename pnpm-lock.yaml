@@ -60,6 +60,9 @@ importers:
 
   apps/db-worker:
     dependencies:
+      '@repo/db':
+        specifier: workspace:*
+        version: link:../../packages/database
       redis:
         specifier: ^6.2.1
         version: 6.2.1

@@ -1,8 +1,9 @@
 import { createClient } from 'redis';
-
+import { DBQuery } from './db.js';
 
 
 export async function startProcessor() {
+    
     const redisClient = createClient({
         url: "redis://redis:6379"
     });
@@ -12,17 +13,13 @@ export async function startProcessor() {
 
     while (true) {
 
-        const response = await redisClient.rPop("db_processor");
+        const response = await redisClient.brPop("db_processor", 0);
         if (!response) continue;
 
-        const data: any = JSON.parse(response);
+        const data: any = JSON.parse(response.element);
         console.log(data);
-        if (data.type == "TRADE_ADDED") {
-            const price = data.data.price;
-            const timestamp = new Date(data.data.timestamp);
-            const volume = data.data.quantity;
-            console.log("added ");
-        }
+
+        DBQuery(data);
     }
 }
 
