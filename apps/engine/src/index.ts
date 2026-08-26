@@ -6,7 +6,7 @@ import type { Side } from "./trade/orderbook.js";
 
 export interface OrderMessage {
     userId: string,
-    pair: string,
+    market: string,
     side: Side,
     quantity: number,
     price: number

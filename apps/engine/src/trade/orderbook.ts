@@ -52,7 +52,7 @@ export class orderBook {
                     })
                 }
 
-                this.bids.push( );
+                this.bids.push(order);
                 this.bids.sort((a, b) => b.price - a.price);
                 return ({
                     fills,

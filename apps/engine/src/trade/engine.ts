@@ -44,8 +44,8 @@ export class MatchEngine {
         switch (message.type) {
             case "CREATE_ORDER":
                 try {
-                    const { userId, price, quantity, side, pair }: OrderMessage = message.data;
-                    const { executed, fills, orderId } = this.createOrder({ userId, price, quantity, pair, side });
+                    const { userId, price, quantity, side, market }: OrderMessage = message.data;
+                    const { executed, fills, orderId } = this.createOrder({ userId, price, quantity, market, side });
                     console.log("Balances after order:", JSON.stringify(Array.from(this.balance.entries()), null, 2));
                     RedisManager.getInstance().sendResult(clientId, {
                         type: "ORDER_PLACED",
@@ -70,10 +70,10 @@ export class MatchEngine {
         }
     }
 
-    createOrder({ userId, price, quantity, pair, side }: OrderMessage) {
-        let orderbook = this.orderBooks.find((o: any) => o.getTicker() === pair);
-        let baseAsset = pair.split("_")[0]!;
-        let quoteAsset = pair.split("_")[1]!;
+    createOrder({ userId, price, quantity, market, side }: OrderMessage) {
+        let orderbook = this.orderBooks.find((o: any) => o.getTicker() === market);
+        let baseAsset = market.split("_")[0]!;
+        let quoteAsset = market.split("_")[1]!;
         if (!orderbook) {
             throw new Error("No orderbook found");
         }
@@ -90,7 +90,7 @@ export class MatchEngine {
         this.updateFunds(userId, baseAsset, quoteAsset, side, fills, executed);
         console.log(orderbook.asks);
         console.log(orderbook.bids);
-        this.createDbTrades(fills, pair, userId);
+        this.createDbTrades(fills, market, userId,Order.orderId,Order.side);
         return { executed, fills, orderId: Order.orderId };
     }
 
@@ -165,7 +165,7 @@ export class MatchEngine {
                 locked: 0
             },
             "SOL": {
-                available: 50000,
+                available: 10,
                 locked: 0
             }
         });
@@ -176,28 +176,30 @@ export class MatchEngine {
                 locked: 0
             },
             "SOL": {
-                available: 50000,
+                available: 25,
                 locked: 0
             }
         });
     }
 
-    createDbTrades(fills: any, market: string, userId: string) {
-        console.log("db trade created");
+    createDbTrades(fills: any, market: string, userId: string, orderId: string, side: Side) {
+        const isBuy = side === "BUY";
         fills.forEach((fill: any) => {
             RedisManager.getInstance().pushMessage({
                 type: "TRADE_ADDED",
                 data: {
-                    market: pair,
-                    id: fill.tradeId.toString(),
-                    isBuyerMaker: fill.otherUserId === userId,
+                    tradeId: fill.tradeId,
+                    market,
                     price: fill.price,
-                    quantity: fill.qty.toString(),
-                    quoteQuantity: (fill.qty * Number(fill.price)).toString(),
-                    timestamp: Date.now()
+                    quantity: fill.quantity,
+                    buyOrderId: isBuy ? orderId : fill.marketOrderId,
+                    sellOrderId: isBuy ? fill.marketOrderId : orderId,
+                    buyUserId: isBuy ? userId : fill.otherUserId,
+                    sellUserId: isBuy ? fill.otherUserId : userId,
+                    timestamp: Date.now(),
                 }
-            })
-        })
+            });
+        });
     }
 
 }
