@@ -136,6 +136,18 @@ exports.Prisma.BalanceScalarFieldEnum = {
   updatedAt: 'updatedAt'
 };
 
+exports.Prisma.OrderScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  pair: 'pair',
+  side: 'side',
+  price: 'price',
+  quantity: 'quantity',
+  filled: 'filled',
+  status: 'status',
+  createdAt: 'createdAt'
+};
+
 exports.Prisma.TradeScalarFieldEnum = {
   id: 'id',
   market: 'market',
@@ -143,8 +155,8 @@ exports.Prisma.TradeScalarFieldEnum = {
   quantity: 'quantity',
   buyOrderId: 'buyOrderId',
   sellOrderId: 'sellOrderId',
-  buyerUserId: 'buyerUserId',
-  sellerUserId: 'sellerUserId',
+  buyUserId: 'buyUserId',
+  sellUserId: 'sellUserId',
   createdAt: 'createdAt'
 };
 
@@ -162,11 +174,22 @@ exports.Prisma.NullsOrder = {
   first: 'first',
   last: 'last'
 };
+exports.OrderSide = exports.$Enums.OrderSide = {
+  BUY: 'BUY',
+  SELL: 'SELL'
+};
 
+exports.OrderStatus = exports.$Enums.OrderStatus = {
+  OPEN: 'OPEN',
+  PARTIALLY_FILLED: 'PARTIALLY_FILLED',
+  FILLED: 'FILLED',
+  CANCELLED: 'CANCELLED'
+};
 
 exports.Prisma.ModelName = {
   User: 'User',
   Balance: 'Balance',
+  Order: 'Order',
   Trade: 'Trade'
 };
 

@@ -7,15 +7,29 @@ datasource db {
   provider = "postgresql"
 }
 
+enum OrderSide {
+  BUY
+  SELL
+}
+
+enum OrderStatus {
+  OPEN
+  PARTIALLY_FILLED
+  FILLED
+  CANCELLED
+}
+
 model User {
-  id        String    @id @default(cuid())
-  email     String    @unique
-  password  String
-  name      String?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  balances  Balance[]
-  trades    Trade[]   @relation("UserTrades")
+  id           String    @id @default(cuid())
+  email        String    @unique
+  password     String
+  name         String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  balances     Balance[]
+  orders       Order[]   @relation("UserOrders")
+  buyerTrades  Trade[]   @relation("BuyerTrades")
+  sellerTrades Trade[]   @relation("SellerTrades")
 }
 
 model Balance {
@@ -28,15 +42,35 @@ model Balance {
   @@id([userId, asset])
 }
 
+model Order {
+  id        String      @id @default(uuid())
+  userId    String
+  pair      String
+  side      OrderSide
+  price     Float
+  quantity  Float
+  filled    Float       @default(0)
+  status    OrderStatus @default(OPEN)
+  createdAt DateTime    @default(now())
+
+  user       User    @relation("UserOrders", fields: [userId], references: [id])
+  buyTrades  Trade[] @relation("BuyOrderTrades")
+  sellTrades Trade[] @relation("SellOrderTrades")
+}
+
 model Trade {
-  id           String   @id @default(cuid())
-  market       String // e.g. "SOL_USDC"
-  price        Float
-  quantity     Float
-  buyOrderId   String
-  sellOrderId  String
-  buyerUserId  String
-  sellerUserId String
-  createdAt    DateTime @default(now())
-  user         User     @relation("UserTrades", fields: [buyerUserId], references: [id])
+  id          String   @id @default(uuid())
+  market      String
+  price       Float
+  quantity    Float
+  buyOrderId  String
+  sellOrderId String
+  buyUserId   String
+  sellUserId  String
+  createdAt   DateTime @default(now())
+
+  buyOrder  Order @relation("BuyOrderTrades", fields: [buyOrderId], references: [id])
+  sellOrder Order @relation("SellOrderTrades", fields: [sellOrderId], references: [id])
+  buyer     User  @relation("BuyerTrades", fields: [buyUserId], references: [id])
+  seller    User  @relation("SellerTrades", fields: [sellUserId], references: [id])
 }

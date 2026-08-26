@@ -90,7 +90,23 @@ export class MatchEngine {
         this.updateFunds(userId, baseAsset, quoteAsset, side, fills, executed);
         console.log(orderbook.asks);
         console.log(orderbook.bids);
-        this.createDbTrades(fills, market, userId,Order.orderId,Order.side);
+
+        RedisManager.getInstance().pushMessage({
+            type: "ORDER_ADDED",
+            data: {
+                orderId: Order.orderId,
+                userId,
+                pair: market,
+                side,
+                price: Number(price),
+                quantity: Number(quantity),
+                filled: Number(executed),
+                status: executed === 0 ? "OPEN" : executed < Number(quantity) ? "PARTIALLY_FILLED" : "FILLED",
+                timestamp: Date.now(),
+            }
+        });
+
+        this.createDbTrades(fills, market, userId, Order.orderId, Order.side);
         return { executed, fills, orderId: Order.orderId };
     }
 

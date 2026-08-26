@@ -2,12 +2,39 @@ import { prisma } from "@repo/db";
 
 export async function DBQuery(data: any) {
     switch (data.type) {
-        case "TRADE_ADDED":
+        case "ORDER_ADDED": {
+            try {
+                await prisma.order.upsert({
+                    where: { id: data.data.orderId },
+                    update: {
+                        filled: Number(data.data.filled),
+                        status: data.data.status,
+                        price: Number(data.data.price),
+                        quantity: Number(data.data.quantity),
+                    },
+                    create: {
+                        id: data.data.orderId,
+                        userId: data.data.userId,
+                        pair: data.data.pair,
+                        side: data.data.side,
+                        price: Number(data.data.price),
+                        quantity: Number(data.data.quantity),
+                        filled: Number(data.data.filled),
+                        status: data.data.status,
+                    },
+                });
+                console.log("order saved to db");
+            } catch (error) {
+                console.error("Error while saving Order", error);
+            }
+            break;
+        }
+
+        case "TRADE_ADDED": {
             try {
                 await prisma.trade.create({
                     data: {
-                        tradeId: Number(data.data.tradeId),
-                        pair: data.data.market,
+                        market: data.data.market,
                         price: Number(data.data.price),
                         quantity: Number(data.data.quantity),
                         buyOrderId: data.data.buyOrderId,
@@ -19,8 +46,12 @@ export async function DBQuery(data: any) {
                 });
                 console.log("trade saved to db");
             } catch (error) {
-                console.log("Error while saving Trade", error);   // also log the actual error, not just a message
+                console.error("Error while saving Trade", error);
             }
-            break;   // add this — see below
+            break;
+        }
+
+        default:
+            break;
     }
 }
