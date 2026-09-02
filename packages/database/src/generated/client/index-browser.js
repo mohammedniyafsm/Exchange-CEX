@@ -139,7 +139,7 @@ exports.Prisma.BalanceScalarFieldEnum = {
 exports.Prisma.OrderScalarFieldEnum = {
   id: 'id',
   userId: 'userId',
-  pair: 'pair',
+  market: 'market',
   side: 'side',
   price: 'price',
   quantity: 'quantity',

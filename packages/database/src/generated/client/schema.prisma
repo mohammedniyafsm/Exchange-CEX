@@ -45,7 +45,7 @@ model Balance {
 model Order {
   id        String      @id @default(uuid())
   userId    String
-  pair      String
+  market    String
   side      OrderSide
   price     Float
   quantity  Float
