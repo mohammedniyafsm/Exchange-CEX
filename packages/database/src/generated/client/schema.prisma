@@ -60,6 +60,7 @@ model Order {
 
 model Trade {
   id          String   @id @default(uuid())
+  tradeId     Int
   market      String
   price       Float
   quantity    Float

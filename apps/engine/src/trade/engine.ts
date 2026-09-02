@@ -88,25 +88,25 @@ export class MatchEngine {
         }
         const { fills, executed } = orderbook.createOrder(Order);
         this.updateFunds(userId, baseAsset, quoteAsset, side, fills, executed);
-        console.log(orderbook.asks);
-        console.log(orderbook.bids);
 
-        RedisManager.getInstance().pushMessage({
-            type: "ORDER_ADDED",
-            data: {
-                orderId: Order.orderId,
-                userId,
-                pair: market,
-                side,
-                price: Number(price),
-                quantity: Number(quantity),
-                filled: Number(executed),
-                status: executed === 0 ? "OPEN" : executed < Number(quantity) ? "PARTIALLY_FILLED" : "FILLED",
-                timestamp: Date.now(),
-            }
-        });
+        for (const fill of fills) {
+            this.pushOrderToDb(
+                fill.marketOrderId,
+                fill.otherUserId,
+                market,
+                fill.otherOrderSide,
+                fill.otherOrderPrice,
+                fill.otherOrderQuantity,
+                fill.otherOrderFilled
+            );
+        }
 
-        this.createDbTrades(fills, market, userId, Order.orderId, Order.side);
+        if (fills.length > 0) {
+            this.pushOrderToDb(Order.orderId, userId, market, side, Number(price), Number(quantity), executed);
+        }
+
+        this.createDbTrades(fills, market, userId, Order.orderId, side);
+
         return { executed, fills, orderId: Order.orderId };
     }
 
@@ -194,6 +194,23 @@ export class MatchEngine {
             "SOL": {
                 available: 25,
                 locked: 0
+            }
+        });
+    }
+
+    pushOrderToDb(orderId: string, userId: string, market: string, side: Side, price: number, quantity: number, filled: number) {
+        RedisManager.getInstance().pushMessage({
+            type: "ORDER_ADDED",
+            data: {
+                orderId,
+                userId,
+                market,
+                side,
+                price,
+                quantity,
+                filled,
+                status: filled === 0 ? "OPEN" : filled < quantity ? "PARTIALLY_FILLED" : "FILLED",
+                timestamp: Date.now(),
             }
         });
     }

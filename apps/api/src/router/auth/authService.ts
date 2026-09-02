@@ -15,6 +15,7 @@ export interface AuthResponse {
 }
 
 export const authService = {
+  
   async signup(email: string, password: string): Promise<AuthResponse> {
     try {
       // Check if user already exists

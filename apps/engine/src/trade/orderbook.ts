@@ -88,43 +88,44 @@ export class orderBook {
         let { userId, quantity, price, side, filled, orderId } = order;
         let executed = 0;
         let fills = [];
-        let touchedCount = 0; // track how many asks we actually touched
+        let touchedCount = 0;
 
         for (let i = 0; i < this.asks.length; i++) {
             let ask = this.asks[i]!;
 
-            if (ask?.price! > price) {
+            if (ask.price > price) {
                 break;
             }
 
             if (executed < quantity) {
-                let filledQty = Math.min((quantity - executed), ask?.quantity!);
+                let filledQty = Math.min((quantity - executed), ask.quantity);
                 executed += filledQty;
                 ask.filled += filledQty;
                 touchedCount++;
                 fills.push({
-                    price: ask?.price,
+                    price: ask.price,
                     quantity: filledQty,
                     tradeId: this.lastTrade++,
-                    otherUserId: ask?.userId,
-                    marketOrderId: ask?.orderId,
+                    otherUserId: ask.userId,
+                    marketOrderId: ask.orderId,
+                    otherOrderQuantity: ask.quantity,
+                    otherOrderFilled: ask.filled,
+                    otherOrderPrice: ask.price,
+                    otherOrderSide: ask.side,
                 })
             }
         }
 
         for (let i = 0; i < touchedCount; i++) {
-            let ask = this.asks[i];
-            if (ask?.filled === ask?.quantity) {
+            let ask = this.asks[i]!;
+            if (ask.filled === ask.quantity) {
                 this.asks.splice(i, 1);
                 i--;
                 touchedCount--;
             }
         }
 
-        return {
-            fills,
-            executed,
-        }
+        return { fills, executed }
     }
 
     matchSells(order: Order) {

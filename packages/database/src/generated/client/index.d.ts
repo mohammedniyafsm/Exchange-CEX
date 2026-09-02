@@ -4779,17 +4779,20 @@ export namespace Prisma {
   }
 
   export type TradeAvgAggregateOutputType = {
+    tradeId: number | null
     price: number | null
     quantity: number | null
   }
 
   export type TradeSumAggregateOutputType = {
+    tradeId: number | null
     price: number | null
     quantity: number | null
   }
 
   export type TradeMinAggregateOutputType = {
     id: string | null
+    tradeId: number | null
     market: string | null
     price: number | null
     quantity: number | null
@@ -4802,6 +4805,7 @@ export namespace Prisma {
 
   export type TradeMaxAggregateOutputType = {
     id: string | null
+    tradeId: number | null
     market: string | null
     price: number | null
     quantity: number | null
@@ -4814,6 +4818,7 @@ export namespace Prisma {
 
   export type TradeCountAggregateOutputType = {
     id: number
+    tradeId: number
     market: number
     price: number
     quantity: number
@@ -4827,17 +4832,20 @@ export namespace Prisma {
 
 
   export type TradeAvgAggregateInputType = {
+    tradeId?: true
     price?: true
     quantity?: true
   }
 
   export type TradeSumAggregateInputType = {
+    tradeId?: true
     price?: true
     quantity?: true
   }
 
   export type TradeMinAggregateInputType = {
     id?: true
+    tradeId?: true
     market?: true
     price?: true
     quantity?: true
@@ -4850,6 +4858,7 @@ export namespace Prisma {
 
   export type TradeMaxAggregateInputType = {
     id?: true
+    tradeId?: true
     market?: true
     price?: true
     quantity?: true
@@ -4862,6 +4871,7 @@ export namespace Prisma {
 
   export type TradeCountAggregateInputType = {
     id?: true
+    tradeId?: true
     market?: true
     price?: true
     quantity?: true
@@ -4961,6 +4971,7 @@ export namespace Prisma {
 
   export type TradeGroupByOutputType = {
     id: string
+    tradeId: number
     market: string
     price: number
     quantity: number
@@ -4992,6 +5003,7 @@ export namespace Prisma {
 
   export type TradeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
     id?: boolean
+    tradeId?: boolean
     market?: boolean
     price?: boolean
     quantity?: boolean
@@ -5008,6 +5020,7 @@ export namespace Prisma {
 
   export type TradeSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
     id?: boolean
+    tradeId?: boolean
     market?: boolean
     price?: boolean
     quantity?: boolean
@@ -5024,6 +5037,7 @@ export namespace Prisma {
 
   export type TradeSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
     id?: boolean
+    tradeId?: boolean
     market?: boolean
     price?: boolean
     quantity?: boolean
@@ -5040,6 +5054,7 @@ export namespace Prisma {
 
   export type TradeSelectScalar = {
     id?: boolean
+    tradeId?: boolean
     market?: boolean
     price?: boolean
     quantity?: boolean
@@ -5050,7 +5065,7 @@ export namespace Prisma {
     createdAt?: boolean
   }
 
-  export type TradeOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "market" | "price" | "quantity" | "buyOrderId" | "sellOrderId" | "buyUserId" | "sellUserId" | "createdAt", ExtArgs["result"]["trade"]>
+  export type TradeOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "tradeId" | "market" | "price" | "quantity" | "buyOrderId" | "sellOrderId" | "buyUserId" | "sellUserId" | "createdAt", ExtArgs["result"]["trade"]>
   export type TradeInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     buyOrder?: boolean | OrderDefaultArgs<ExtArgs>
     sellOrder?: boolean | OrderDefaultArgs<ExtArgs>
@@ -5080,6 +5095,7 @@ export namespace Prisma {
     }
     scalars: $Extensions.GetPayloadResult<{
       id: string
+      tradeId: number
       market: string
       price: number
       quantity: number
@@ -5516,6 +5532,7 @@ export namespace Prisma {
    */
   interface TradeFieldRefs {
     readonly id: FieldRef<"Trade", 'String'>
+    readonly tradeId: FieldRef<"Trade", 'Int'>
     readonly market: FieldRef<"Trade", 'String'>
     readonly price: FieldRef<"Trade", 'Float'>
     readonly quantity: FieldRef<"Trade", 'Float'>
@@ -5996,6 +6013,7 @@ export namespace Prisma {
 
   export const TradeScalarFieldEnum: {
     id: 'id',
+    tradeId: 'tradeId',
     market: 'market',
     price: 'price',
     quantity: 'quantity',
@@ -6335,6 +6353,7 @@ export namespace Prisma {
     OR?: TradeWhereInput[]
     NOT?: TradeWhereInput | TradeWhereInput[]
     id?: StringFilter<"Trade"> | string
+    tradeId?: IntFilter<"Trade"> | number
     market?: StringFilter<"Trade"> | string
     price?: FloatFilter<"Trade"> | number
     quantity?: FloatFilter<"Trade"> | number
@@ -6351,6 +6370,7 @@ export namespace Prisma {
 
   export type TradeOrderByWithRelationInput = {
     id?: SortOrder
+    tradeId?: SortOrder
     market?: SortOrder
     price?: SortOrder
     quantity?: SortOrder
@@ -6370,6 +6390,7 @@ export namespace Prisma {
     AND?: TradeWhereInput | TradeWhereInput[]
     OR?: TradeWhereInput[]
     NOT?: TradeWhereInput | TradeWhereInput[]
+    tradeId?: IntFilter<"Trade"> | number
     market?: StringFilter<"Trade"> | string
     price?: FloatFilter<"Trade"> | number
     quantity?: FloatFilter<"Trade"> | number
@@ -6386,6 +6407,7 @@ export namespace Prisma {
 
   export type TradeOrderByWithAggregationInput = {
     id?: SortOrder
+    tradeId?: SortOrder
     market?: SortOrder
     price?: SortOrder
     quantity?: SortOrder
@@ -6406,6 +6428,7 @@ export namespace Prisma {
     OR?: TradeScalarWhereWithAggregatesInput[]
     NOT?: TradeScalarWhereWithAggregatesInput | TradeScalarWhereWithAggregatesInput[]
     id?: StringWithAggregatesFilter<"Trade"> | string
+    tradeId?: IntWithAggregatesFilter<"Trade"> | number
     market?: StringWithAggregatesFilter<"Trade"> | string
     price?: FloatWithAggregatesFilter<"Trade"> | number
     quantity?: FloatWithAggregatesFilter<"Trade"> | number
@@ -6636,6 +6659,7 @@ export namespace Prisma {
 
   export type TradeCreateInput = {
     id?: string
+    tradeId: number
     market: string
     price: number
     quantity: number
@@ -6648,6 +6672,7 @@ export namespace Prisma {
 
   export type TradeUncheckedCreateInput = {
     id?: string
+    tradeId: number
     market: string
     price: number
     quantity: number
@@ -6660,6 +6685,7 @@ export namespace Prisma {
 
   export type TradeUpdateInput = {
     id?: StringFieldUpdateOperationsInput | string
+    tradeId?: IntFieldUpdateOperationsInput | number
     market?: StringFieldUpdateOperationsInput | string
     price?: FloatFieldUpdateOperationsInput | number
     quantity?: FloatFieldUpdateOperationsInput | number
@@ -6672,6 +6698,7 @@ export namespace Prisma {
 
   export type TradeUncheckedUpdateInput = {
     id?: StringFieldUpdateOperationsInput | string
+    tradeId?: IntFieldUpdateOperationsInput | number
     market?: StringFieldUpdateOperationsInput | string
     price?: FloatFieldUpdateOperationsInput | number
     quantity?: FloatFieldUpdateOperationsInput | number
@@ -6684,6 +6711,7 @@ export namespace Prisma {
 
   export type TradeCreateManyInput = {
     id?: string
+    tradeId: number
     market: string
     price: number
     quantity: number
@@ -6696,6 +6724,7 @@ export namespace Prisma {
 
   export type TradeUpdateManyMutationInput = {
     id?: StringFieldUpdateOperationsInput | string
+    tradeId?: IntFieldUpdateOperationsInput | number
     market?: StringFieldUpdateOperationsInput | string
     price?: FloatFieldUpdateOperationsInput | number
     quantity?: FloatFieldUpdateOperationsInput | number
@@ -6704,6 +6733,7 @@ export namespace Prisma {
 
   export type TradeUncheckedUpdateManyInput = {
     id?: StringFieldUpdateOperationsInput | string
+    tradeId?: IntFieldUpdateOperationsInput | number
     market?: StringFieldUpdateOperationsInput | string
     price?: FloatFieldUpdateOperationsInput | number
     quantity?: FloatFieldUpdateOperationsInput | number
@@ -7015,6 +7045,17 @@ export namespace Prisma {
     _max?: NestedEnumOrderStatusFilter<$PrismaModel>
   }
 
+  export type IntFilter<$PrismaModel = never> = {
+    equals?: number | IntFieldRefInput<$PrismaModel>
+    in?: number[] | ListIntFieldRefInput<$PrismaModel>
+    notIn?: number[] | ListIntFieldRefInput<$PrismaModel>
+    lt?: number | IntFieldRefInput<$PrismaModel>
+    lte?: number | IntFieldRefInput<$PrismaModel>
+    gt?: number | IntFieldRefInput<$PrismaModel>
+    gte?: number | IntFieldRefInput<$PrismaModel>
+    not?: NestedIntFilter<$PrismaModel> | number
+  }
+
   export type OrderScalarRelationFilter = {
     is?: OrderWhereInput
     isNot?: OrderWhereInput
@@ -7022,6 +7063,7 @@ export namespace Prisma {
 
   export type TradeCountOrderByAggregateInput = {
     id?: SortOrder
+    tradeId?: SortOrder
     market?: SortOrder
     price?: SortOrder
     quantity?: SortOrder
@@ -7033,12 +7075,14 @@ export namespace Prisma {
   }
 
   export type TradeAvgOrderByAggregateInput = {
+    tradeId?: SortOrder
     price?: SortOrder
     quantity?: SortOrder
   }
 
   export type TradeMaxOrderByAggregateInput = {
     id?: SortOrder
+    tradeId?: SortOrder
     market?: SortOrder
     price?: SortOrder
     quantity?: SortOrder
@@ -7051,6 +7095,7 @@ export namespace Prisma {
 
   export type TradeMinOrderByAggregateInput = {
     id?: SortOrder
+    tradeId?: SortOrder
     market?: SortOrder
     price?: SortOrder
     quantity?: SortOrder
@@ -7062,8 +7107,25 @@ export namespace Prisma {
   }
 
   export type TradeSumOrderByAggregateInput = {
+    tradeId?: SortOrder
     price?: SortOrder
     quantity?: SortOrder
+  }
+
+  export type IntWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: number | IntFieldRefInput<$PrismaModel>
+    in?: number[] | ListIntFieldRefInput<$PrismaModel>
+    notIn?: number[] | ListIntFieldRefInput<$PrismaModel>
+    lt?: number | IntFieldRefInput<$PrismaModel>
+    lte?: number | IntFieldRefInput<$PrismaModel>
+    gt?: number | IntFieldRefInput<$PrismaModel>
+    gte?: number | IntFieldRefInput<$PrismaModel>
+    not?: NestedIntWithAggregatesFilter<$PrismaModel> | number
+    _count?: NestedIntFilter<$PrismaModel>
+    _avg?: NestedFloatFilter<$PrismaModel>
+    _sum?: NestedIntFilter<$PrismaModel>
+    _min?: NestedIntFilter<$PrismaModel>
+    _max?: NestedIntFilter<$PrismaModel>
   }
 
   export type BalanceCreateNestedManyWithoutUserInput = {
@@ -7398,6 +7460,14 @@ export namespace Prisma {
     connect?: UserWhereUniqueInput
   }
 
+  export type IntFieldUpdateOperationsInput = {
+    set?: number
+    increment?: number
+    decrement?: number
+    multiply?: number
+    divide?: number
+  }
+
   export type OrderUpdateOneRequiredWithoutBuyTradesNestedInput = {
     create?: XOR<OrderCreateWithoutBuyTradesInput, OrderUncheckedCreateWithoutBuyTradesInput>
     connectOrCreate?: OrderCreateOrConnectWithoutBuyTradesInput
@@ -7600,6 +7670,22 @@ export namespace Prisma {
     _max?: NestedEnumOrderStatusFilter<$PrismaModel>
   }
 
+  export type NestedIntWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: number | IntFieldRefInput<$PrismaModel>
+    in?: number[] | ListIntFieldRefInput<$PrismaModel>
+    notIn?: number[] | ListIntFieldRefInput<$PrismaModel>
+    lt?: number | IntFieldRefInput<$PrismaModel>
+    lte?: number | IntFieldRefInput<$PrismaModel>
+    gt?: number | IntFieldRefInput<$PrismaModel>
+    gte?: number | IntFieldRefInput<$PrismaModel>
+    not?: NestedIntWithAggregatesFilter<$PrismaModel> | number
+    _count?: NestedIntFilter<$PrismaModel>
+    _avg?: NestedFloatFilter<$PrismaModel>
+    _sum?: NestedIntFilter<$PrismaModel>
+    _min?: NestedIntFilter<$PrismaModel>
+    _max?: NestedIntFilter<$PrismaModel>
+  }
+
   export type BalanceCreateWithoutUserInput = {
     asset: string
     available: number
@@ -7660,6 +7746,7 @@ export namespace Prisma {
 
   export type TradeCreateWithoutBuyerInput = {
     id?: string
+    tradeId: number
     market: string
     price: number
     quantity: number
@@ -7671,6 +7758,7 @@ export namespace Prisma {
 
   export type TradeUncheckedCreateWithoutBuyerInput = {
     id?: string
+    tradeId: number
     market: string
     price: number
     quantity: number
@@ -7692,6 +7780,7 @@ export namespace Prisma {
 
   export type TradeCreateWithoutSellerInput = {
     id?: string
+    tradeId: number
     market: string
     price: number
     quantity: number
@@ -7703,6 +7792,7 @@ export namespace Prisma {
 
   export type TradeUncheckedCreateWithoutSellerInput = {
     id?: string
+    tradeId: number
     market: string
     price: number
     quantity: number
@@ -7800,6 +7890,7 @@ export namespace Prisma {
     OR?: TradeScalarWhereInput[]
     NOT?: TradeScalarWhereInput | TradeScalarWhereInput[]
     id?: StringFilter<"Trade"> | string
+    tradeId?: IntFilter<"Trade"> | number
     market?: StringFilter<"Trade"> | string
     price?: FloatFilter<"Trade"> | number
     quantity?: FloatFilter<"Trade"> | number
@@ -7921,6 +8012,7 @@ export namespace Prisma {
 
   export type TradeCreateWithoutBuyOrderInput = {
     id?: string
+    tradeId: number
     market: string
     price: number
     quantity: number
@@ -7932,6 +8024,7 @@ export namespace Prisma {
 
   export type TradeUncheckedCreateWithoutBuyOrderInput = {
     id?: string
+    tradeId: number
     market: string
     price: number
     quantity: number
@@ -7953,6 +8046,7 @@ export namespace Prisma {
 
   export type TradeCreateWithoutSellOrderInput = {
     id?: string
+    tradeId: number
     market: string
     price: number
     quantity: number
@@ -7964,6 +8058,7 @@ export namespace Prisma {
 
   export type TradeUncheckedCreateWithoutSellOrderInput = {
     id?: string
+    tradeId: number
     market: string
     price: number
     quantity: number
@@ -8333,6 +8428,7 @@ export namespace Prisma {
 
   export type TradeCreateManyBuyerInput = {
     id?: string
+    tradeId: number
     market: string
     price: number
     quantity: number
@@ -8344,6 +8440,7 @@ export namespace Prisma {
 
   export type TradeCreateManySellerInput = {
     id?: string
+    tradeId: number
     market: string
     price: number
     quantity: number
@@ -8410,6 +8507,7 @@ export namespace Prisma {
 
   export type TradeUpdateWithoutBuyerInput = {
     id?: StringFieldUpdateOperationsInput | string
+    tradeId?: IntFieldUpdateOperationsInput | number
     market?: StringFieldUpdateOperationsInput | string
     price?: FloatFieldUpdateOperationsInput | number
     quantity?: FloatFieldUpdateOperationsInput | number
@@ -8421,6 +8519,7 @@ export namespace Prisma {
 
   export type TradeUncheckedUpdateWithoutBuyerInput = {
     id?: StringFieldUpdateOperationsInput | string
+    tradeId?: IntFieldUpdateOperationsInput | number
     market?: StringFieldUpdateOperationsInput | string
     price?: FloatFieldUpdateOperationsInput | number
     quantity?: FloatFieldUpdateOperationsInput | number
@@ -8432,6 +8531,7 @@ export namespace Prisma {
 
   export type TradeUncheckedUpdateManyWithoutBuyerInput = {
     id?: StringFieldUpdateOperationsInput | string
+    tradeId?: IntFieldUpdateOperationsInput | number
     market?: StringFieldUpdateOperationsInput | string
     price?: FloatFieldUpdateOperationsInput | number
     quantity?: FloatFieldUpdateOperationsInput | number
@@ -8443,6 +8543,7 @@ export namespace Prisma {
 
   export type TradeUpdateWithoutSellerInput = {
     id?: StringFieldUpdateOperationsInput | string
+    tradeId?: IntFieldUpdateOperationsInput | number
     market?: StringFieldUpdateOperationsInput | string
     price?: FloatFieldUpdateOperationsInput | number
     quantity?: FloatFieldUpdateOperationsInput | number
@@ -8454,6 +8555,7 @@ export namespace Prisma {
 
   export type TradeUncheckedUpdateWithoutSellerInput = {
     id?: StringFieldUpdateOperationsInput | string
+    tradeId?: IntFieldUpdateOperationsInput | number
     market?: StringFieldUpdateOperationsInput | string
     price?: FloatFieldUpdateOperationsInput | number
     quantity?: FloatFieldUpdateOperationsInput | number
@@ -8465,6 +8567,7 @@ export namespace Prisma {
 
   export type TradeUncheckedUpdateManyWithoutSellerInput = {
     id?: StringFieldUpdateOperationsInput | string
+    tradeId?: IntFieldUpdateOperationsInput | number
     market?: StringFieldUpdateOperationsInput | string
     price?: FloatFieldUpdateOperationsInput | number
     quantity?: FloatFieldUpdateOperationsInput | number
@@ -8476,6 +8579,7 @@ export namespace Prisma {
 
   export type TradeCreateManyBuyOrderInput = {
     id?: string
+    tradeId: number
     market: string
     price: number
     quantity: number
@@ -8487,6 +8591,7 @@ export namespace Prisma {
 
   export type TradeCreateManySellOrderInput = {
     id?: string
+    tradeId: number
     market: string
     price: number
     quantity: number
@@ -8498,6 +8603,7 @@ export namespace Prisma {
 
   export type TradeUpdateWithoutBuyOrderInput = {
     id?: StringFieldUpdateOperationsInput | string
+    tradeId?: IntFieldUpdateOperationsInput | number
     market?: StringFieldUpdateOperationsInput | string
     price?: FloatFieldUpdateOperationsInput | number
     quantity?: FloatFieldUpdateOperationsInput | number
@@ -8509,6 +8615,7 @@ export namespace Prisma {
 
   export type TradeUncheckedUpdateWithoutBuyOrderInput = {
     id?: StringFieldUpdateOperationsInput | string
+    tradeId?: IntFieldUpdateOperationsInput | number
     market?: StringFieldUpdateOperationsInput | string
     price?: FloatFieldUpdateOperationsInput | number
     quantity?: FloatFieldUpdateOperationsInput | number
@@ -8520,6 +8627,7 @@ export namespace Prisma {
 
   export type TradeUncheckedUpdateManyWithoutBuyOrderInput = {
     id?: StringFieldUpdateOperationsInput | string
+    tradeId?: IntFieldUpdateOperationsInput | number
     market?: StringFieldUpdateOperationsInput | string
     price?: FloatFieldUpdateOperationsInput | number
     quantity?: FloatFieldUpdateOperationsInput | number
@@ -8531,6 +8639,7 @@ export namespace Prisma {
 
   export type TradeUpdateWithoutSellOrderInput = {
     id?: StringFieldUpdateOperationsInput | string
+    tradeId?: IntFieldUpdateOperationsInput | number
     market?: StringFieldUpdateOperationsInput | string
     price?: FloatFieldUpdateOperationsInput | number
     quantity?: FloatFieldUpdateOperationsInput | number
@@ -8542,6 +8651,7 @@ export namespace Prisma {
 
   export type TradeUncheckedUpdateWithoutSellOrderInput = {
     id?: StringFieldUpdateOperationsInput | string
+    tradeId?: IntFieldUpdateOperationsInput | number
     market?: StringFieldUpdateOperationsInput | string
     price?: FloatFieldUpdateOperationsInput | number
     quantity?: FloatFieldUpdateOperationsInput | number
@@ -8553,6 +8663,7 @@ export namespace Prisma {
 
   export type TradeUncheckedUpdateManyWithoutSellOrderInput = {
     id?: StringFieldUpdateOperationsInput | string
+    tradeId?: IntFieldUpdateOperationsInput | number
     market?: StringFieldUpdateOperationsInput | string
     price?: FloatFieldUpdateOperationsInput | number
     quantity?: FloatFieldUpdateOperationsInput | number

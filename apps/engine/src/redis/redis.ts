@@ -27,7 +27,7 @@ export class RedisManager {
         return this.instance;
     }
 
-    public async getNextOrder() {
+    public async getNextOrder() { 
         const result = await this.client.brPop("messages", 0);
         return result;
     }

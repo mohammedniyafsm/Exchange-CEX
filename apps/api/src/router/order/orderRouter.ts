@@ -9,26 +9,27 @@ const OrderRouter: RouterType = Router();
 
 OrderRouter.post("/", async (req: AuthRequest, res: Response) => {
   try {
-    const { pair, side, quantity, price,userId } = req.body;
+    const { market, side, quantity, price, userId } = req.body;
     // const userId = req.userId!;
 
-    if (!pair || !side || !quantity || !price) {
+    if (!market || !side || !quantity || !price) {
       res.status(400).json({
         success: false,
-        message: "pair, side, quantity, and price are required"
+        message: "market, side, quantity, and price are required"
       });
       return;
     }
 
     const result: any = await RedisManager.getInstance().sendAndWait({
       type: "CREATE_ORDER",
-      data: { userId, pair, side, quantity, price }
+      data: { userId, market, side, quantity, price }
     })
 
     if (result.type === "ORDER_PLACED") {
-      console.log(result)
+      console.log("Order Placed", result)
       res.status(201).json(result);
     } else {
+      console.log("Order Added Orderbook", result);
       res.status(400).json(result);
     }
   } catch (error) {

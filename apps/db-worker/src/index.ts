@@ -3,9 +3,11 @@ import { DBQuery } from './db.js';
 
 
 export async function startProcessor() {
-    
+
+    const redisUrl = process.env.REDIS_URL || "redis://localhost:6379";
+
     const redisClient = createClient({
-        url: "redis://redis:6379"
+        url: redisUrl
     });
     await redisClient.connect();
 
