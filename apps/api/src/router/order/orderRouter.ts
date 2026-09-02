@@ -40,43 +40,4 @@ OrderRouter.post("/", async (req: AuthRequest, res: Response) => {
 });
 
 
-OrderRouter.delete("/", async (req: AuthRequest, res: Response) => {
-  try {
-    const { orderId, market } = req.body;
-    const userId = req.userId!;
-
-    const result: any = await RedisManager.getInstance().sendAndWait({
-      type: "DELETE_ORDER",
-      data: { userId, orderId, market }
-    })
-    console.log(result)
-    res.status(201).json(result);
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Internal server error"
-    });
-  }
-});
-
-
-OrderRouter.get("/", async (req: AuthRequest, res: Response) => {
-  try {
-    const { orderId, market } = req.body;
-    const userId = req.userId!;
-
-    const result: any = await RedisManager.getInstance().sendAndWait({
-      type: "GET_OPEN_ORDERS",
-      data: { userId, market }
-    })
-    console.log(result)
-    res.status(201).json(result);
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Internal server error"
-    });
-  }
-});
-
 export default OrderRouter;
