@@ -4,7 +4,7 @@ export async function DBQuery(data: any) {
     switch (data.type) {
         case "ORDER_ADDED": {
             try {
-                await prisma.order.upsert({
+                const res = await prisma.order.upsert({
                     where: { id: data.data.orderId },
                     update: {
                         filled: Number(data.data.filled),
@@ -13,7 +13,7 @@ export async function DBQuery(data: any) {
                     create: {
                         id: data.data.orderId,
                         userId: data.data.userId,
-                        pair: data.data.market,          
+                        market: data.data.market,          
                         side: data.data.side,
                         price: Number(data.data.price),
                         quantity: Number(data.data.quantity),
@@ -21,7 +21,8 @@ export async function DBQuery(data: any) {
                         status: data.data.status,
                     },
                 });
-                console.log("order saved to db:", data.data.orderId);
+                console.log(res);
+                // console.log("order saved to db:", data.data.orderId);
             } catch (error) {
                 console.error("Error while saving Order", error);
             }
@@ -30,7 +31,7 @@ export async function DBQuery(data: any) {
 
         case "TRADE_ADDED": {
             try {
-                await prisma.trade.create({
+                const res = await prisma.trade.create({
                     data: {
                         tradeId: Number(data.data.tradeId),
                         market: data.data.market,
@@ -44,7 +45,8 @@ export async function DBQuery(data: any) {
                         // no "id" here — Trade.id uses @default(uuid()), Postgres generates it
                     }
                 });
-                console.log("trade saved to db:", data.data.tradeId);
+                console.log(res)
+                // console.log("trade saved to db:", data.data.tradeId);
             } catch (error) {
                 console.error("Error while saving Trade", error);
             }

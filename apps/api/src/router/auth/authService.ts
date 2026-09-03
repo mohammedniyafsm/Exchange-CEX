@@ -45,7 +45,7 @@ export const authService = {
           balances: {
             create: [
               { asset: "SOL", available: randomSol },
-              { asset: "USD", available: randomUsd }
+              { asset: "USDC", available: randomUsd }
             ]
           }
         }

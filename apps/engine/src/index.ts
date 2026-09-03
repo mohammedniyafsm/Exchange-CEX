@@ -21,7 +21,7 @@ interface Result {
 }
 
 async function main() {
-    const engine = new MatchEngine();
+    const engine = await MatchEngine.create();
 
     console.log("Engine consumer started, waiting for orders...");
     while (true) {

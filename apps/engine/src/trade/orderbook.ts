@@ -152,6 +152,10 @@ export class orderBook {
                     tradeId: this.lastTrade++,
                     otherUserId: bid?.userId,
                     marketOrderId: bid?.orderId,
+                    otherOrderQuantity: bid?.quantity,
+                    otherOrderFilled: bid?.filled,
+                    otherOrderPrice: bid?.price,
+                    otherOrderSide: bid?.side,
                 })
 
             }

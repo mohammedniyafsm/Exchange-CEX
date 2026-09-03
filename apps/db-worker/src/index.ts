@@ -21,7 +21,7 @@ export async function startProcessor() {
         const data: any = JSON.parse(response.element);
         console.log(data);
 
-        DBQuery(data);
+        await DBQuery(data);
     }
 }
 
