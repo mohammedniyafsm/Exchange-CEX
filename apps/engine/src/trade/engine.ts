@@ -111,6 +111,11 @@ export class MatchEngine {
         const { fills, executed } = orderbook.createOrder(Order);
         this.updateFunds(userId, baseAsset, quoteAsset, side, fills, executed);
 
+        this.pushBalancesToDb([
+            userId,
+            ...fills.map((fill: any) => fill.otherUserId),
+        ]);
+
         for (const fill of fills) {
             const { marketOrderId, otherUserId, otherOrderSide, otherOrderPrice, otherOrderQuantity, otherOrderFilled } = fill;
 
@@ -195,6 +200,27 @@ export class MatchEngine {
                 userBal[quoteAsset].available += fill.quantity * fill.price;
                 otherBal[quoteAsset].locked -= fill.price * fill.quantity;
                 userBal[baseAsset].locked -= fill.quantity;
+            }
+        }
+    }
+
+    pushBalancesToDb(userIds: string[]) {
+        const uniqueUserIds = new Set(userIds);
+
+        for (const userId of uniqueUserIds) {
+            const userBalance = this.balance.get(userId);
+            if (!userBalance) continue;
+
+            for (const [asset, balance] of Object.entries(userBalance)) {
+                RedisManager.getInstance().pushMessage({
+                    type: "BALANCE_UPDATED",
+                    data: {
+                        userId,
+                        asset,
+                        available: balance.available,
+                        timestamp: Date.now(),
+                    },
+                });
             }
         }
     }

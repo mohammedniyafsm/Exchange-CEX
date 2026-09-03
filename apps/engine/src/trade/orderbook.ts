@@ -89,6 +89,7 @@ export class orderBook {
         let executed = 0;
         let fills = [];
         let touchedCount = 0;
+        let remainingToExecute = quantity - filled;
 
         for (let i = 0; i < this.asks.length; i++) {
             let ask = this.asks[i]!;
@@ -97,8 +98,9 @@ export class orderBook {
                 break;
             }
 
-            if (executed < quantity) {
-                let filledQty = Math.min((quantity - executed), ask.quantity);
+            const remainingAskQuantity = ask.quantity - ask.filled;
+            if (executed < remainingToExecute) {
+                let filledQty = Math.min(remainingToExecute - executed, remainingAskQuantity);
                 executed += filledQty;
                 ask.filled += filledQty;
                 touchedCount++;
@@ -133,6 +135,7 @@ export class orderBook {
         let executed = 0;
         let fills = [];
         let touchedCount = 0;
+        let remainingToExecute = quantity - filled;
 
         for (let i = 0; i < this.bids.length; i++) {
             let bid = this.bids[i]!;
@@ -140,8 +143,9 @@ export class orderBook {
                 break;
             }
 
-            if (executed < quantity) {
-                let filledQty = Math.min((quantity - executed), bid?.quantity!);
+            const remainingBidQuantity = bid.quantity - bid.filled;
+            if (executed < remainingToExecute) {
+                let filledQty = Math.min(remainingToExecute - executed, remainingBidQuantity);
                 executed += filledQty;
                 bid.filled += filledQty;
                 touchedCount++;

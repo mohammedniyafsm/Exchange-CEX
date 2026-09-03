@@ -53,6 +53,31 @@ export async function DBQuery(data: any) {
             break;
         }
 
+        case "BALANCE_UPDATED": {
+            try {
+                const res = await prisma.balance.upsert({
+                    where: {
+                        userId_asset: {
+                            userId: data.data.userId,
+                            asset: data.data.asset,
+                        },
+                    },
+                    update: {
+                        available: Number(data.data.available),
+                    },
+                    create: {
+                        userId: data.data.userId,
+                        asset: data.data.asset,
+                        available: Number(data.data.available),
+                    },
+                });
+                console.log(res);
+            } catch (error) {
+                console.error("Error while saving Balance", error);
+            }
+            break;
+        }
+
         default:
             console.log("Unknown message type:", data.type);
             break;
