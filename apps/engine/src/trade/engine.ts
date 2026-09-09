@@ -89,6 +89,62 @@ export class MatchEngine {
                     })
                 }
                 break;
+            case "DEPOSIT":
+                try {
+                    const { userId, asset, amount } = message.data;
+                    this.deposit(userId, asset, amount);
+                    this.pushBalancesToDb([userId]);
+                    RedisManager.getInstance().sendResult(clientId, {
+                        type: "DEPOSIT_COMPLETED",
+                        payload: { userId, asset, amount: Number(amount) },
+                    });
+                } catch (error) {
+                    RedisManager.getInstance().sendResult(clientId, {
+                        type: "DEPOSIT_FAILED",
+                        payload: { message: error instanceof Error ? error.message : "Deposit failed" },
+                    });
+                }
+                break;
+            case "WITHDRAW":
+                try {
+                    const { userId, asset, amount } = message.data;
+                    this.withdraw(userId, asset, amount);
+                    this.pushBalancesToDb([userId]);
+                    RedisManager.getInstance().sendResult(clientId, {
+                        type: "WITHDRAW_COMPLETED",
+                        payload: { userId, asset, amount: Number(amount) },
+                    });
+                } catch (error) {
+                    RedisManager.getInstance().sendResult(clientId, {
+                        type: "WITHDRAW_FAILED",
+                        payload: { message: error instanceof Error ? error.message : "Withdrawal failed" },
+                    });
+                }
+                break;
+        }
+    }
+
+    deposit(userId: string, asset: string, amount: number) {
+        this.validateWalletInput(userId, asset, amount);
+        const userBalance = this.balance.get(userId) ?? {};
+        const assetBalance = userBalance[asset] ?? { available: 0, locked: 0 };
+        assetBalance.available += Number(amount);
+        userBalance[asset] = assetBalance;
+        this.balance.set(userId, userBalance);
+    }
+
+    withdraw(userId: string, asset: string, amount: number) {
+        this.validateWalletInput(userId, asset, amount);
+        const assetBalance = this.balance.get(userId)?.[asset];
+        if (!assetBalance || assetBalance.available < Number(amount)) {
+            throw new Error("Insufficient available balance");
+        }
+        assetBalance.available -= Number(amount);
+    }
+
+    private validateWalletInput(userId: string, asset: string, amount: number) {
+        if (!userId || !asset || !Number.isFinite(Number(amount)) || Number(amount) <= 0) {
+            throw new Error("userId, asset, and a positive amount are required");
         }
     }
 
@@ -163,6 +219,7 @@ export class MatchEngine {
             }
             quoteBalance.available -= Number(quantity) * Number(price);
             quoteBalance.locked += Number(quantity) * Number(price);
+            this.pushBalancesToDb([userId]);
         } else {
             const baseBalance = userBalance[baseAsset];
             if (!baseBalance) {
@@ -173,6 +230,7 @@ export class MatchEngine {
             }
             baseBalance.available -= Number(quantity);
             baseBalance.locked += Number(quantity);
+            this.pushBalancesToDb([userId]);
         }
     }
 
@@ -218,6 +276,7 @@ export class MatchEngine {
                         userId,
                         asset,
                         available: balance.available,
+                        locked: balance.locked,
                         timestamp: Date.now(),
                     },
                 });

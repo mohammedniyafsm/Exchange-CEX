@@ -64,11 +64,13 @@ export async function DBQuery(data: any) {
                     },
                     update: {
                         available: Number(data.data.available),
+                        locked: Number(data.data.locked),
                     },
                     create: {
                         userId: data.data.userId,
                         asset: data.data.asset,
                         available: Number(data.data.available),
+                        locked: Number(data.data.locked),
                     },
                 });
                 console.log(res);

@@ -133,6 +133,7 @@ exports.Prisma.BalanceScalarFieldEnum = {
   userId: 'userId',
   asset: 'asset',
   available: 'available',
+  locked: 'locked',
   updatedAt: 'updatedAt'
 };
 

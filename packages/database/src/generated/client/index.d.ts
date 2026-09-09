@@ -2481,16 +2481,19 @@ export namespace Prisma {
 
   export type BalanceAvgAggregateOutputType = {
     available: number | null
+    locked: number | null
   }
 
   export type BalanceSumAggregateOutputType = {
     available: number | null
+    locked: number | null
   }
 
   export type BalanceMinAggregateOutputType = {
     userId: string | null
     asset: string | null
     available: number | null
+    locked: number | null
     updatedAt: Date | null
   }
 
@@ -2498,6 +2501,7 @@ export namespace Prisma {
     userId: string | null
     asset: string | null
     available: number | null
+    locked: number | null
     updatedAt: Date | null
   }
 
@@ -2505,6 +2509,7 @@ export namespace Prisma {
     userId: number
     asset: number
     available: number
+    locked: number
     updatedAt: number
     _all: number
   }
@@ -2512,16 +2517,19 @@ export namespace Prisma {
 
   export type BalanceAvgAggregateInputType = {
     available?: true
+    locked?: true
   }
 
   export type BalanceSumAggregateInputType = {
     available?: true
+    locked?: true
   }
 
   export type BalanceMinAggregateInputType = {
     userId?: true
     asset?: true
     available?: true
+    locked?: true
     updatedAt?: true
   }
 
@@ -2529,6 +2537,7 @@ export namespace Prisma {
     userId?: true
     asset?: true
     available?: true
+    locked?: true
     updatedAt?: true
   }
 
@@ -2536,6 +2545,7 @@ export namespace Prisma {
     userId?: true
     asset?: true
     available?: true
+    locked?: true
     updatedAt?: true
     _all?: true
   }
@@ -2630,6 +2640,7 @@ export namespace Prisma {
     userId: string
     asset: string
     available: number
+    locked: number
     updatedAt: Date
     _count: BalanceCountAggregateOutputType | null
     _avg: BalanceAvgAggregateOutputType | null
@@ -2656,6 +2667,7 @@ export namespace Prisma {
     userId?: boolean
     asset?: boolean
     available?: boolean
+    locked?: boolean
     updatedAt?: boolean
     user?: boolean | UserDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["balance"]>
@@ -2664,6 +2676,7 @@ export namespace Prisma {
     userId?: boolean
     asset?: boolean
     available?: boolean
+    locked?: boolean
     updatedAt?: boolean
     user?: boolean | UserDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["balance"]>
@@ -2672,6 +2685,7 @@ export namespace Prisma {
     userId?: boolean
     asset?: boolean
     available?: boolean
+    locked?: boolean
     updatedAt?: boolean
     user?: boolean | UserDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["balance"]>
@@ -2680,10 +2694,11 @@ export namespace Prisma {
     userId?: boolean
     asset?: boolean
     available?: boolean
+    locked?: boolean
     updatedAt?: boolean
   }
 
-  export type BalanceOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"userId" | "asset" | "available" | "updatedAt", ExtArgs["result"]["balance"]>
+  export type BalanceOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"userId" | "asset" | "available" | "locked" | "updatedAt", ExtArgs["result"]["balance"]>
   export type BalanceInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     user?: boolean | UserDefaultArgs<ExtArgs>
   }
@@ -2703,6 +2718,7 @@ export namespace Prisma {
       userId: string
       asset: string
       available: number
+      locked: number
       updatedAt: Date
     }, ExtArgs["result"]["balance"]>
     composites: {}
@@ -3131,6 +3147,7 @@ export namespace Prisma {
     readonly userId: FieldRef<"Balance", 'String'>
     readonly asset: FieldRef<"Balance", 'String'>
     readonly available: FieldRef<"Balance", 'Float'>
+    readonly locked: FieldRef<"Balance", 'Float'>
     readonly updatedAt: FieldRef<"Balance", 'DateTime'>
   }
     
@@ -5990,6 +6007,7 @@ export namespace Prisma {
     userId: 'userId',
     asset: 'asset',
     available: 'available',
+    locked: 'locked',
     updatedAt: 'updatedAt'
   };
 
@@ -6219,6 +6237,7 @@ export namespace Prisma {
     userId?: StringFilter<"Balance"> | string
     asset?: StringFilter<"Balance"> | string
     available?: FloatFilter<"Balance"> | number
+    locked?: FloatFilter<"Balance"> | number
     updatedAt?: DateTimeFilter<"Balance"> | Date | string
     user?: XOR<UserScalarRelationFilter, UserWhereInput>
   }
@@ -6227,6 +6246,7 @@ export namespace Prisma {
     userId?: SortOrder
     asset?: SortOrder
     available?: SortOrder
+    locked?: SortOrder
     updatedAt?: SortOrder
     user?: UserOrderByWithRelationInput
   }
@@ -6239,6 +6259,7 @@ export namespace Prisma {
     userId?: StringFilter<"Balance"> | string
     asset?: StringFilter<"Balance"> | string
     available?: FloatFilter<"Balance"> | number
+    locked?: FloatFilter<"Balance"> | number
     updatedAt?: DateTimeFilter<"Balance"> | Date | string
     user?: XOR<UserScalarRelationFilter, UserWhereInput>
   }, "userId_asset">
@@ -6247,6 +6268,7 @@ export namespace Prisma {
     userId?: SortOrder
     asset?: SortOrder
     available?: SortOrder
+    locked?: SortOrder
     updatedAt?: SortOrder
     _count?: BalanceCountOrderByAggregateInput
     _avg?: BalanceAvgOrderByAggregateInput
@@ -6262,6 +6284,7 @@ export namespace Prisma {
     userId?: StringWithAggregatesFilter<"Balance"> | string
     asset?: StringWithAggregatesFilter<"Balance"> | string
     available?: FloatWithAggregatesFilter<"Balance"> | number
+    locked?: FloatWithAggregatesFilter<"Balance"> | number
     updatedAt?: DateTimeWithAggregatesFilter<"Balance"> | Date | string
   }
 
@@ -6521,6 +6544,7 @@ export namespace Prisma {
   export type BalanceCreateInput = {
     asset: string
     available: number
+    locked?: number
     updatedAt?: Date | string
     user: UserCreateNestedOneWithoutBalancesInput
   }
@@ -6529,12 +6553,14 @@ export namespace Prisma {
     userId: string
     asset: string
     available: number
+    locked?: number
     updatedAt?: Date | string
   }
 
   export type BalanceUpdateInput = {
     asset?: StringFieldUpdateOperationsInput | string
     available?: FloatFieldUpdateOperationsInput | number
+    locked?: FloatFieldUpdateOperationsInput | number
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     user?: UserUpdateOneRequiredWithoutBalancesNestedInput
   }
@@ -6543,6 +6569,7 @@ export namespace Prisma {
     userId?: StringFieldUpdateOperationsInput | string
     asset?: StringFieldUpdateOperationsInput | string
     available?: FloatFieldUpdateOperationsInput | number
+    locked?: FloatFieldUpdateOperationsInput | number
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
@@ -6550,12 +6577,14 @@ export namespace Prisma {
     userId: string
     asset: string
     available: number
+    locked?: number
     updatedAt?: Date | string
   }
 
   export type BalanceUpdateManyMutationInput = {
     asset?: StringFieldUpdateOperationsInput | string
     available?: FloatFieldUpdateOperationsInput | number
+    locked?: FloatFieldUpdateOperationsInput | number
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
@@ -6563,6 +6592,7 @@ export namespace Prisma {
     userId?: StringFieldUpdateOperationsInput | string
     asset?: StringFieldUpdateOperationsInput | string
     available?: FloatFieldUpdateOperationsInput | number
+    locked?: FloatFieldUpdateOperationsInput | number
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
@@ -6922,17 +6952,20 @@ export namespace Prisma {
     userId?: SortOrder
     asset?: SortOrder
     available?: SortOrder
+    locked?: SortOrder
     updatedAt?: SortOrder
   }
 
   export type BalanceAvgOrderByAggregateInput = {
     available?: SortOrder
+    locked?: SortOrder
   }
 
   export type BalanceMaxOrderByAggregateInput = {
     userId?: SortOrder
     asset?: SortOrder
     available?: SortOrder
+    locked?: SortOrder
     updatedAt?: SortOrder
   }
 
@@ -6940,11 +6973,13 @@ export namespace Prisma {
     userId?: SortOrder
     asset?: SortOrder
     available?: SortOrder
+    locked?: SortOrder
     updatedAt?: SortOrder
   }
 
   export type BalanceSumOrderByAggregateInput = {
     available?: SortOrder
+    locked?: SortOrder
   }
 
   export type FloatWithAggregatesFilter<$PrismaModel = never> = {
@@ -7689,12 +7724,14 @@ export namespace Prisma {
   export type BalanceCreateWithoutUserInput = {
     asset: string
     available: number
+    locked?: number
     updatedAt?: Date | string
   }
 
   export type BalanceUncheckedCreateWithoutUserInput = {
     asset: string
     available: number
+    locked?: number
     updatedAt?: Date | string
   }
 
@@ -7835,6 +7872,7 @@ export namespace Prisma {
     userId?: StringFilter<"Balance"> | string
     asset?: StringFilter<"Balance"> | string
     available?: FloatFilter<"Balance"> | number
+    locked?: FloatFilter<"Balance"> | number
     updatedAt?: DateTimeFilter<"Balance"> | Date | string
   }
 
@@ -8412,6 +8450,7 @@ export namespace Prisma {
   export type BalanceCreateManyUserInput = {
     asset: string
     available: number
+    locked?: number
     updatedAt?: Date | string
   }
 
@@ -8453,18 +8492,21 @@ export namespace Prisma {
   export type BalanceUpdateWithoutUserInput = {
     asset?: StringFieldUpdateOperationsInput | string
     available?: FloatFieldUpdateOperationsInput | number
+    locked?: FloatFieldUpdateOperationsInput | number
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
   export type BalanceUncheckedUpdateWithoutUserInput = {
     asset?: StringFieldUpdateOperationsInput | string
     available?: FloatFieldUpdateOperationsInput | number
+    locked?: FloatFieldUpdateOperationsInput | number
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
   export type BalanceUncheckedUpdateManyWithoutUserInput = {
     asset?: StringFieldUpdateOperationsInput | string
     available?: FloatFieldUpdateOperationsInput | number
+    locked?: FloatFieldUpdateOperationsInput | number
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 

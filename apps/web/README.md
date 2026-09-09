@@ -1,36 +1,64 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/create-next-app).
+# CryptoLattice Web Frontend
 
-## Getting Started
+This app is a Vite + React + TypeScript trading dashboard built to run in demo mode without any backend dependency.
 
-First, run the development server:
+## Install
+
+```bash
+cd apps/web
+npm install
+```
+
+## Run
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The app starts on http://localhost:5173.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Architecture
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load Inter, a custom Google Font.
+- `src/pages` contains route-level screens.
+- `src/components` contains the trading terminal UI and reusable blocks.
+- `src/services/mockApi.ts` is the mock data layer.
+- `src/types.ts` defines the platform contracts.
+- `src/data/seed.ts` generates realistic market, candle, order book, and portfolio mock data.
+- `src/App.tsx` wires routing between `/trade`, `/markets`, `/portfolio`, `/orders`, `/wallet`, and `/settings`.
 
-## Learn More
+## Mock API
 
-To learn more about Next.js, take a look at the following resources:
+The UI is intentionally built around a service abstraction:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- `services/api.ts` defines the contract for future backend integration.
+- `services/mockApi.ts` implements the same interface with demo data.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+This keeps the UI independent from the data source and makes it easy to switch to a real REST or WebSocket backend later.
 
-## Deploy on Vercel
+## Future backend integration
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+To connect real APIs later, replace `mockApi` with an implementation that calls the backend while preserving the same methods:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `getMarkets()`
+- `getCandles(symbol, timeframe)`
+- `getOrderBook(symbol)`
+- `getOrders()`
+- `getPositions()`
+- `getPortfolio()`
+- `placeOrder(order)`
+- `cancelOrder(orderId)`
+
+## WebSocket integration
+
+The mock stream is currently simulated with intervals in the trading page. The future WebSocket integration point is the service layer or a dedicated market data provider that emits ticker, orderbook, candle, and order update events.
+
+## Market data flow
+
+1. Route selects a trading pair such as `/trade/SOL-USDT`.
+2. `TradingPage` reads the selected market from the mock market list.
+3. Candle and order book data are fetched from the mock API.
+4. The chart and book update as demo data refreshes every few seconds.
+
+## Orders
+
+Demo orders are created client-side and appended to the mock state. Limit orders remain open; market orders are filled immediately. This keeps the trading flow interactive while remaining backend-free.
