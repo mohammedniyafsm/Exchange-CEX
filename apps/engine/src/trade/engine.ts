@@ -17,8 +17,8 @@ type OnAvailableChange = (userId: string, asset: string, newAvailable: number) =
 
 
 export class MatchEngine {
-    private balance: Map<string, UserBalance> = new Map();
     private orderBooks: any = [];
+    private balance: Map<string, UserBalance> = new Map();
     private hasSnapshot = false;
 
     static async create() {
@@ -64,6 +64,7 @@ export class MatchEngine {
 
     process({ clientId, message }: { clientId: string; message: any }) {
         switch (message.type) {
+            
             case "CREATE_ORDER":
                 try {
                     const { userId, price, quantity, side, market }: OrderMessage = message.data;
@@ -89,6 +90,83 @@ export class MatchEngine {
                     })
                 }
                 break;
+
+            case "CANCEL_ORDER":
+                try {
+                    const { orderId, market: cancelMarket } = message.data;
+                    const cancelOrderbook = this.orderBooks.find(
+                        (o: any) => o.getTicker() === cancelMarket,
+                    );
+
+                    if (!cancelOrderbook) {
+                        console.log("from cancel order");
+                        throw new Error("No orderbook found");
+                    }
+
+                    const order =
+                        cancelOrderbook.asks.find((o: any) => o.orderId === orderId) ||
+                        cancelOrderbook.bids.find((o: any) => o.orderId === orderId);
+
+                    if (!order) {
+                        console.log("from cancel order 2 ");
+                        throw new Error("No order found");
+                    }
+
+                    const quoteAsset = cancelOrderbook.quoteAsset;
+                    const baseAsset = cancelOrderbook.baseAsset;
+
+                    if (order.side = "BUY") {
+                        const price = cancelOrderbook.cancelBid(order);
+                        const leftQuantity = (order.quantity - order.filled) * price;
+                        this.ensureBalance(order.userId, quoteAsset);
+                        this.balance.get(order.userId)![quoteAsset]!.available +=
+                            leftQuantity;
+                        this.balance.get(order.userId)![quoteAsset]!.locked -=
+                            leftQuantity;
+                    } else {
+                        const price = cancelOrderbook.cancelAsk(order);
+                        const leftQuantity = order.quantity - order.filled;
+                        this.ensureBalance(order.userId, baseAsset);
+                        this.balance.get(order.userId)![baseAsset]!.available +=
+                            leftQuantity;
+                        this.balance.get(order.userId)![baseAsset]!.locked -= leftQuantity;
+                    }
+                    RedisManager.getInstance().sendResult(clientId, {
+                        type: "ORDER_CANCELLED",
+                        payload: { orderId, executedQty: 0, remainingQty: 0 },
+                    });
+                } catch (e) {
+                    console.log("Error while cancelling order:", e);
+                }
+                break;
+
+            case "GET_BALANCES":
+                RedisManager.getInstance().sendResult(clientId, {
+                    type: "BALANCES",
+                    payload: this.getBalancesPayload(message.data.userId),
+                });
+                break;
+
+            case "CLAIM_BALANCE":
+                try {
+                    this.claimBalance(
+                        message.data.userId,
+                        message.data.asset,
+                        Number(message.data.amount),
+                    );
+                    RedisManager.getInstance().sendResult(clientId, {
+                        type: "BALANCES",
+                        payload: this.getBalancesPayload(message.data.userId),
+                    });
+                } catch (e) {
+                    console.log(e);
+                    RedisManager.getInstance().sendResult(clientId, {
+                        type: "BALANCES",
+                        payload: { balances: [] },
+                    });
+                }
+                break;
+
             case "DEPOSIT":
                 try {
                     const { userId, asset, amount } = message.data;
@@ -105,6 +183,30 @@ export class MatchEngine {
                     });
                 }
                 break;
+
+            case "GET_OPEN_ORDERS":
+                try {
+                    const openOrderbook = this.orderBooks.find(
+                        (o :any) => o.ticker() === message.data.market,
+                    );
+                    const openOrders =
+                        openOrderbook?. getOpenOrders(message.data.userId) ?? [];
+                    RedisManager.getInstance().sendResult(clientId, {
+                        type: "OPEN_ORDERS",
+                        payload: openOrders.map((o:any) => ({
+                            orderId: o.orderId,
+                            executedQty: o.filled,
+                            price: o.price.toString(),
+                            quantity: o.quantity.toString(),
+                            side: o.side,
+                            userId: o.userId,
+                        })),
+                    });
+                } catch (e) {
+                    console.log(e);
+                }
+                break;
+
             case "WITHDRAW":
                 try {
                     const { userId, asset, amount } = message.data;
@@ -349,6 +451,37 @@ export class MatchEngine {
                 }
             });
         });
+    }
+
+    claimBalance(userId: string, asset: string, amount: number) {
+        if (!Number.isFinite(amount) || amount <= 0) {
+            throw new Error("Amount must be positive");
+        }
+        this.ensureBalance(userId, asset);
+        this.balance.get(userId)![asset]!.available += amount;
+    }
+
+    private static TEST_USERS = new Set(["1", "2", "5"]);
+
+    ensureBalance(userId: string, currency: string) {
+        if (!this.balance.has(userId)) {
+            this.balance.set(userId, {});
+        }
+
+        if (!this.balance.get(userId)![currency]) {
+            const available = MatchEngine.TEST_USERS.has(userId) ? 100_000_000 : 0;
+            this.balance.get(userId)![currency] = { available, locked: 0 };
+        }
+    }
+
+    getBalancesPayload(userId: string) {
+        const userBalance = this.balance.get(userId) ?? {};
+        const balances = Object.entries(userBalance).map(([asset, b]) => ({
+            asset,
+            available: b.available.toString(),
+            locked: b.locked.toString(),
+        }));
+        return { balances };
     }
 
 }
