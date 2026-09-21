@@ -1,4 +1,5 @@
 import { prisma } from "@repo/db";
+import { saveTradeToTimescale } from "./timescale.js";
 
 export async function DBQuery(data: any) {
     switch (data.type) {
@@ -31,6 +32,12 @@ export async function DBQuery(data: any) {
 
         case "TRADE_ADDED": {
             try {
+                try {
+                    await saveTradeToTimescale(data.data);
+                } catch (error) {
+                    console.error("Error while saving Trade to TimescaleDB", error);
+                }
+
                 const res = await prisma.trade.create({
                     data: {
                         tradeId: Number(data.data.tradeId),
