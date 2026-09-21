@@ -1,43 +1,44 @@
-import { createClient, type RedisClientType } from "redis"
+import { createClient, type RedisClientType } from "redis";
 
+// dont accidentally create multiple connections to redis
 export class RedisManager {
-
     private client: RedisClientType;
-    private publisher: RedisClientType;
     private static instance: RedisManager;
 
     constructor() {
-        const redisUrl = process.env.REDIS_URL || "redis://localhost:6379";
+        const redisUrl =
+            process.env.REDIS_URL || "redis://localhost:6379";
+
         this.client = createClient({
             url: redisUrl
-        })
-        this.client.connect();
+        });
 
-        this.publisher = createClient({
-            url: redisUrl
-        })
-        this.publisher.connect();
+        this.client.connect();
     }
 
     public static getInstance() {
         if (!this.instance) {
             this.instance = new RedisManager();
-            return this.instance
         }
+
         return this.instance;
     }
 
-    public async getNextOrder() { 
-        const result = await this.client.brPop("messages", 0);
-        return result;
+    public async getNextOrder() {
+        return await this.client.brPop("messages", 0);
     }
 
     public async sendResult(clientId: string, payload: any) {
-        await this.publisher.publish(clientId, JSON.stringify(payload));
+        await this.client.publish(
+            clientId,
+            JSON.stringify(payload)
+        );
     }
 
-    public pushMessage(message: any) {
-        this.client.lPush("db_processor", JSON.stringify(message));
+    public async pushMessage(message: any) {
+        await this.client.lPush(
+            "db_processor",
+            JSON.stringify(message)
+        );
     }
-
 }
