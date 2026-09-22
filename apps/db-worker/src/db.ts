@@ -1,5 +1,5 @@
 import { prisma } from "@repo/db";
-import { saveTradeToTimescale } from "./timescale.js";
+import { saveTradeToTimescale } from "./TimescaleDB/timescaleClient.js";
 
 export async function DBQuery(data: any) {
     switch (data.type) {

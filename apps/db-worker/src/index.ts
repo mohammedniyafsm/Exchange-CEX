@@ -1,8 +1,13 @@
 import { createClient } from 'redis';
 import { DBQuery } from './db.js';
+import { startCron } from './TimescaleDB/cron.js';
+import { timeScaleClient } from './TimescaleDB/timescaleClient.js';
 
 
 export async function startProcessor() {
+
+    await timeScaleClient.connect();
+    console.log("Connected to TimescaleDB");
 
     const redisUrl = process.env.REDIS_URL || "redis://localhost:6379";
 
@@ -10,8 +15,9 @@ export async function startProcessor() {
         url: redisUrl
     });
     await redisClient.connect();
+    console.log("Connected to Redis");
 
-    console.log("Connected to Redis and postgres");
+    startCron();
 
     while (true) {
 
