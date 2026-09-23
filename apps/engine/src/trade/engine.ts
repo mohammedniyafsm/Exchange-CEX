@@ -308,38 +308,6 @@ export class MatchEngine {
         return { executed, fills, orderId: order.orderId };
     }
 
-    private refundBuyPriceDifference(
-        userId: string,
-        quoteAsset: string,
-        orderPrice: number,
-        executed: number,
-        fills: any[],
-    ) {
-        if (executed <= 0 || fills.length === 0) return;
-
-        const reservedForExecuted = Number(orderPrice) * executed;
-        const actualExecutionCost = fills.reduce(
-            (total, fill) => total + Number(fill.price) * Number(fill.quantity),
-            0,
-        );
-        const refund = reservedForExecuted - actualExecutionCost;
-
-        if (refund <= 0) return;
-
-        const quoteBalance = this.balance.get(userId)?.[quoteAsset];
-        if (!quoteBalance) {
-            throw new Error(`Asset balance not found: ${quoteAsset}`);
-        }
-
-        quoteBalance.available += refund;
-        quoteBalance.locked -= refund;
-
-        console.log("[ENGINE][CREATE_ORDER] Refunded unused BUY price difference", {
-            userId,
-            asset: quoteAsset,
-            refund,
-        });
-    }
 
     // Validate available funds and move the order amount into locked balance.
     checkAndUpdateFund(userId: string, baseAsset: string, quoteAsset: string, price: number, quantity: number, side: Side) {
@@ -400,6 +368,40 @@ export class MatchEngine {
                 userBal[baseAsset].locked -= fill.quantity;
             }
         }
+    }
+
+    // Refund Amount in case user get order less than he made buy request
+    private refundBuyPriceDifference(
+        userId: string,
+        quoteAsset: string,
+        orderPrice: number,
+        executed: number,
+        fills: any[],
+    ) {
+        if (executed <= 0 || fills.length === 0) return;
+
+        const reservedForExecuted = Number(orderPrice) * executed;
+        const actualExecutionCost = fills.reduce(
+            (total, fill) => total + Number(fill.price) * Number(fill.quantity),
+            0,
+        );
+        const refund = reservedForExecuted - actualExecutionCost;
+
+        if (refund <= 0) return;
+
+        const quoteBalance = this.balance.get(userId)?.[quoteAsset];
+        if (!quoteBalance) {
+            throw new Error(`Asset balance not found: ${quoteAsset}`);
+        }
+
+        quoteBalance.available += refund;
+        quoteBalance.locked -= refund;
+
+        console.log("[ENGINE][CREATE_ORDER] Refunded unused BUY price difference", {
+            userId,
+            asset: quoteAsset,
+            refund,
+        });
     }
 
     // Push Updated Balance to the Database (finding user balance pass to db_proccessor queue)
@@ -479,10 +481,6 @@ export class MatchEngine {
             });
         });
     }
-
-
-
-
 
     deposit(userId: string, asset: string, amount: number) {
         this.validateWalletInput(userId, asset, amount);
