@@ -26,6 +26,7 @@ export class RedisManager {
     return this.instance;
   }
 
+  //Pub/sub send with clientId and subribe to that clientId event 
   public sendAndWait(message: unknown) {
     return new Promise((resolve) => {
       const id = this.getRandomId();

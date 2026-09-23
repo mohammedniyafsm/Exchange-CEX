@@ -39,19 +39,51 @@ export class orderBook {
         return `${this.baseAsset}_${this.quoteAsset}`;
     }
 
+    private logBookSide(label: string, orders: Order[]) {
+        console.log(`  ${label} (top 5):`, orders.slice(0, 5).map((order) => ({
+            orderId: order.orderId,
+            price: order.price,
+            quantity: order.quantity,
+            filled: order.filled,
+            remaining: order.quantity - order.filled,
+        })));
+    }
+
+    private logMatchingSide(order: Order, stage: "before" | "after") {
+        const isBuy = order.side === "BUY";
+        const label = isBuy ? "ASKS (sell orders)" : "BIDS (buy orders)";
+        const orders = isBuy ? this.asks : this.bids;
+
+        console.log(`[ORDERBOOK][${order.orderId}] ${stage} match: ${label}`);
+        this.logBookSide(label, orders);
+        console.log("");
+    }
+
     createOrder(order: Order) {
         try {
-            if (order.side == 'BUY') {
+            if (order.side === "BUY") {
+                this.logMatchingSide(order, "before");
                 const { fills, executed } = this.matchBuys(order);
                 order.filled = executed;
+                this.logMatchingSide(order, "after");
 
                 if (order.quantity === executed) {
+                    console.log("[ORDERBOOK][CREATE_ORDER] Fully matched", {
+                        orderId: order.orderId,
+                        executed,
+                        fillCount: fills.length,
+                    });
                     return ({
                         fills,
                         executed
                     })
                 }
 
+                console.log("[ORDERBOOK][CREATE_ORDER] Resting on bids", {
+                    orderId: order.orderId,
+                    executed,
+                    remaining: order.quantity - executed,
+                });
                 this.bids.push(order);
                 this.bids.sort((a, b) => b.price - a.price);
                 return ({
@@ -59,17 +91,29 @@ export class orderBook {
                     executed,
                 })
             }
-            else if (order.side == 'SELL') {
+            else if (order.side === "SELL") {
+                this.logMatchingSide(order, "before");
                 const { fills, executed } = this.matchSells(order);
                 order.filled = executed;
+                this.logMatchingSide(order, "after");
 
                 if (order.quantity === executed) {
+                    console.log("[ORDERBOOK][CREATE_ORDER] Fully matched", {
+                        orderId: order.orderId,
+                        executed,
+                        fillCount: fills.length,
+                    });
                     return ({
                         fills,
                         executed
                     })
                 }
 
+                console.log("[ORDERBOOK][CREATE_ORDER] Resting on asks", {
+                    orderId: order.orderId,
+                    executed,
+                    remaining: order.quantity - executed,
+                });
                 this.asks.push(order);
                 this.asks.sort((a, b) => a.price - b.price);
                 return ({
@@ -79,7 +123,8 @@ export class orderBook {
 
             }
         } catch (error) {
-            console.log("Error in creating order");
+            console.error("[ORDERBOOK][CREATE_ORDER] Failed", error);
+            console.log("");
             return;
         }
     }

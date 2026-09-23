@@ -51,12 +51,12 @@ export class MatchEngine {
 
     private async loadBalancesFromDb() {
         const balances = await prisma.balance.findMany();
-
+        console.log("user balances", balances)
         for (const balance of balances) {
             const userBalance: UserBalance = this.balance.get(balance.userId) ?? {};
             userBalance[balance.asset] = {
                 available: balance.available,
-                locked: 0,
+                locked: balance.locked,
             };
             this.balance.set(balance.userId, userBalance);
         }
@@ -64,12 +64,26 @@ export class MatchEngine {
 
     process({ clientId, message }: { clientId: string; message: any }) {
         switch (message.type) {
-            
+
             case "CREATE_ORDER":
                 try {
                     const { userId, price, quantity, side, market }: OrderMessage = message.data;
+                    console.log("[ENGINE][CREATE_ORDER] Received", {
+                        userId,
+                        market,
+                        side,
+                        price: Number(price),
+                        quantity: Number(quantity),
+                    });
+
                     const { executed, fills, orderId } = this.createOrder({ userId, price, quantity, market, side });
-                    console.log("Balances after order:", JSON.stringify(Array.from(this.balance.entries()), null, 2));
+                    console.log("[ENGINE][CREATE_ORDER] Result", {
+                        orderId,
+                        executed,
+                        remaining: Number(quantity) - executed,
+                        fillCount: fills.length,
+                    });
+                    console.log("\n");
                     RedisManager.getInstance().sendResult(clientId, {
                         type: "ORDER_PLACED",
                         payload: {
@@ -79,7 +93,8 @@ export class MatchEngine {
                         }
                     })
                 } catch (error) {
-                    console.log("Error in creating order in the engine", error);
+                    console.error("[ENGINE][CREATE_ORDER] Failed", error);
+                    console.log("");
                     RedisManager.getInstance().sendResult(clientId, {
                         type: "ORDER_CANCELLED",
                         payload: {
@@ -187,13 +202,13 @@ export class MatchEngine {
             case "GET_OPEN_ORDERS":
                 try {
                     const openOrderbook = this.orderBooks.find(
-                        (o :any) => o.ticker() === message.data.market,
+                        (o: any) => o.ticker() === message.data.market,
                     );
                     const openOrders =
-                        openOrderbook?. getOpenOrders(message.data.userId) ?? [];
+                        openOrderbook?.getOpenOrders(message.data.userId) ?? [];
                     RedisManager.getInstance().sendResult(clientId, {
                         type: "OPEN_ORDERS",
-                        payload: openOrders.map((o:any) => ({
+                        payload: openOrders.map((o: any) => ({
                             orderId: o.orderId,
                             executedQty: o.filled,
                             price: o.price.toString(),
@@ -226,49 +241,37 @@ export class MatchEngine {
         }
     }
 
-    deposit(userId: string, asset: string, amount: number) {
-        this.validateWalletInput(userId, asset, amount);
-        const userBalance = this.balance.get(userId) ?? {};
-        const assetBalance = userBalance[asset] ?? { available: 0, locked: 0 };
-        assetBalance.available += Number(amount);
-        userBalance[asset] = assetBalance;
-        this.balance.set(userId, userBalance);
-    }
-
-    withdraw(userId: string, asset: string, amount: number) {
-        this.validateWalletInput(userId, asset, amount);
-        const assetBalance = this.balance.get(userId)?.[asset];
-        if (!assetBalance || assetBalance.available < Number(amount)) {
-            throw new Error("Insufficient available balance");
-        }
-        assetBalance.available -= Number(amount);
-    }
-
-    private validateWalletInput(userId: string, asset: string, amount: number) {
-        if (!userId || !asset || !Number.isFinite(Number(amount)) || Number(amount) <= 0) {
-            throw new Error("userId, asset, and a positive amount are required");
-        }
-    }
-
     createOrder({ userId, price, quantity, market, side }: OrderMessage) {
-        let orderbook = this.orderBooks.find((o: any) => o.getTicker() === market);
-        let baseAsset = market.split("_")[0]!;
-        let quoteAsset = market.split("_")[1]!;
+        const orderbook = this.orderBooks.find((o: any) => o.getTicker() === market);
+        const baseAsset = market.split("_")[0]!;
+        const quoteAsset = market.split("_")[1]!;
         if (!orderbook) {
             throw new Error("No orderbook found");
         }
-        this.checkAndUpdateFund(userId, baseAsset, quoteAsset, price, quantity, side);
-        const Order: Order = {
-            orderId: randomUUID(),
+
+        const orderId = randomUUID();
+        const order: Order = {
+            orderId,
             quantity: Number(quantity),
             price: Number(price),
             side,
             userId,
             filled: 0,
-        }
-        const { fills, executed } = orderbook.createOrder(Order);
-        this.updateFunds(userId, baseAsset, quoteAsset, side, fills, executed);
+        };
 
+        console.log("[ENGINE][CREATE_ORDER] Funds locked", {
+            orderId,
+            amount: side === "BUY" ? Number(price) * Number(quantity) : Number(quantity),
+            asset: side === "BUY" ? quoteAsset : baseAsset,
+        });
+        this.checkAndUpdateFund(userId, baseAsset, quoteAsset, price, quantity, side);
+
+        console.log(`[ENGINE][CREATE_ORDER] Matching ${side} ${orderId}`);
+        const { fills, executed } = orderbook.createOrder(order);
+        this.updateFunds(userId, baseAsset, quoteAsset, side, fills, executed);
+        this.refundBuyPriceDifference(userId, quoteAsset, price, executed, fills);
+
+        // Publish the latest balances for the incoming user and every matched counterparty.
         this.pushBalancesToDb([
             userId,
             ...fills.map((fill: any) => fill.otherUserId),
@@ -290,7 +293,7 @@ export class MatchEngine {
 
         if (fills.length > 0) {
             this.pushOrderToDb({
-                orderId: Order.orderId,
+                orderId: order.orderId,
                 userId,
                 market,
                 side,
@@ -300,11 +303,45 @@ export class MatchEngine {
             });
         }
 
-        this.createDbTrades(fills, market, userId, Order.orderId, side);
+        this.createDbTrades(fills, market, userId, order.orderId, side);
 
-        return { executed, fills, orderId: Order.orderId };
+        return { executed, fills, orderId: order.orderId };
     }
 
+    private refundBuyPriceDifference(
+        userId: string,
+        quoteAsset: string,
+        orderPrice: number,
+        executed: number,
+        fills: any[],
+    ) {
+        if (executed <= 0 || fills.length === 0) return;
+
+        const reservedForExecuted = Number(orderPrice) * executed;
+        const actualExecutionCost = fills.reduce(
+            (total, fill) => total + Number(fill.price) * Number(fill.quantity),
+            0,
+        );
+        const refund = reservedForExecuted - actualExecutionCost;
+
+        if (refund <= 0) return;
+
+        const quoteBalance = this.balance.get(userId)?.[quoteAsset];
+        if (!quoteBalance) {
+            throw new Error(`Asset balance not found: ${quoteAsset}`);
+        }
+
+        quoteBalance.available += refund;
+        quoteBalance.locked -= refund;
+
+        console.log("[ENGINE][CREATE_ORDER] Refunded unused BUY price difference", {
+            userId,
+            asset: quoteAsset,
+            refund,
+        });
+    }
+
+    // Validate available funds and move the order amount into locked balance.
     checkAndUpdateFund(userId: string, baseAsset: string, quoteAsset: string, price: number, quantity: number, side: Side) {
         let userBalance = this.balance.get(userId);
         if (!userBalance) {
@@ -336,6 +373,7 @@ export class MatchEngine {
         }
     }
 
+    // Settle every fill by moving assets between the two matched users.
     updateFunds(userId: string, baseAsset: string, quoteAsset: string, side: string, fills: any[], executed: number) {
         for (const fill of fills) {
             const userBal = this.balance.get(userId);
@@ -364,6 +402,7 @@ export class MatchEngine {
         }
     }
 
+    // Push Updated Balance to the Database (finding user balance pass to db_proccessor queue)
     pushBalancesToDb(userIds: string[]) {
         const uniqueUserIds = new Set(userIds);
 
@@ -386,20 +425,7 @@ export class MatchEngine {
         }
     }
 
-    saveSnapshot() {
-        const snapshot = {
-            orderbooks: this.orderBooks.map((o: any) => ({
-                baseAsset: o.baseAsset,
-                bids: o.bids,
-                asks: o.asks,
-                lastTradeId: o.lastTrade,
-                currentPrice: o.currentPrice,
-            })),
-            balances: Array.from(this.balance.entries()),
-        };
-        writeFileSync("./snapshot.json", JSON.stringify(snapshot));
-    }
-
+    // Update  orders  to DB 
     pushOrderToDb({
         orderId,
         userId,
@@ -433,6 +459,7 @@ export class MatchEngine {
         });
     }
 
+    //create Trade match in DB
     createDbTrades(fills: any, market: string, userId: string, orderId: string, side: Side) {
         const isBuy = side === "BUY";
         fills.forEach((fill: any) => {
@@ -451,6 +478,48 @@ export class MatchEngine {
                 }
             });
         });
+    }
+
+
+
+
+
+    deposit(userId: string, asset: string, amount: number) {
+        this.validateWalletInput(userId, asset, amount);
+        const userBalance = this.balance.get(userId) ?? {};
+        const assetBalance = userBalance[asset] ?? { available: 0, locked: 0 };
+        assetBalance.available += Number(amount);
+        userBalance[asset] = assetBalance;
+        this.balance.set(userId, userBalance);
+    }
+
+    withdraw(userId: string, asset: string, amount: number) {
+        this.validateWalletInput(userId, asset, amount);
+        const assetBalance = this.balance.get(userId)?.[asset];
+        if (!assetBalance || assetBalance.available < Number(amount)) {
+            throw new Error("Insufficient available balance");
+        }
+        assetBalance.available -= Number(amount);
+    }
+
+    private validateWalletInput(userId: string, asset: string, amount: number) {
+        if (!userId || !asset || !Number.isFinite(Number(amount)) || Number(amount) <= 0) {
+            throw new Error("userId, asset, and a positive amount are required");
+        }
+    }
+
+    saveSnapshot() {
+        const snapshot = {
+            orderbooks: this.orderBooks.map((o: any) => ({
+                baseAsset: o.baseAsset,
+                bids: o.bids,
+                asks: o.asks,
+                lastTradeId: o.lastTrade,
+                currentPrice: o.currentPrice,
+            })),
+            balances: Array.from(this.balance.entries()),
+        };
+        writeFileSync("./snapshot.json", JSON.stringify(snapshot));
     }
 
     claimBalance(userId: string, asset: string, amount: number) {
