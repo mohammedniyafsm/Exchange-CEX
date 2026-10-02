@@ -1,4 +1,5 @@
-import { readFileSync, writeFileSync } from "fs";
+import { mkdirSync, readFileSync, renameSync, writeFileSync } from "fs";
+import { dirname, resolve } from "path";
 import { prisma } from "@repo/db";
 import { RedisManager } from "../redis/redis.js";
 import { orderBook, type Order, type Side } from "./orderbook.js";
@@ -20,11 +21,16 @@ export class MatchEngine {
     private orderBooks: any = [];
     private balance: Map<string, UserBalance> = new Map();
     private hasSnapshot = false;
+    private readonly snapshotPath = resolve(process.env.SNAPSHOT_PATH ?? "./snapshot.json");
 
     static async create() {
         const engine = new MatchEngine();
         if (!engine.hasSnapshot) {
-            await engine.loadBalancesFromDb();
+            await Promise.all([
+                engine.loadBalancesFromDb(),
+                engine.loadOpenOrdersFromDb(),
+            ]);
+            engine.saveSnapshot();
         }
         return engine;
     }
@@ -32,7 +38,7 @@ export class MatchEngine {
     constructor() {
         let snapshot = null;
         try {
-            snapshot = readFileSync("./snapshot.json");
+            snapshot = readFileSync(this.snapshotPath);
         } catch (error) {
             console.log("No snapshot found, starting fresh");
         }
@@ -41,7 +47,7 @@ export class MatchEngine {
             this.hasSnapshot = true;
             const snapShotJson = JSON.parse(snapshot.toString());
             this.orderBooks = snapShotJson.orderbooks.map((o: any) =>
-                new orderBook(o.baseAsset, o.bids, o.asks, o.lastTradeId, o.currentPrice)
+                new orderBook(o.baseAsset, o.asks, o.bids, o.lastTradeId, o.currentPrice, o.quoteAsset ?? "USDC")
             );
             this.balance = new Map(snapShotJson.balances);
         } else {
@@ -59,6 +65,41 @@ export class MatchEngine {
                 locked: balance.locked,
             };
             this.balance.set(balance.userId, userBalance);
+        }
+    }
+
+    private async loadOpenOrdersFromDb() {
+        const orders = await prisma.order.findMany({
+            where: { status: { in: ["OPEN", "PARTIALLY_FILLED"] } },
+            orderBy: { createdAt: "asc" },
+        });
+
+        for (const savedOrder of orders) {
+            const [baseAsset, quoteAsset] = savedOrder.market.split("_");
+            if (!baseAsset || !quoteAsset) {
+                throw new Error(`Invalid market in saved order ${savedOrder.id}: ${savedOrder.market}`);
+            }
+
+            let book = this.orderBooks.find((candidate: any) => candidate.getTicker() === savedOrder.market);
+            if (!book) {
+                book = new orderBook(baseAsset, [], [], 0, 0, quoteAsset);
+                this.orderBooks.push(book);
+            }
+
+            const order: Order = {
+                orderId: savedOrder.id,
+                userId: savedOrder.userId,
+                side: savedOrder.side as Side,
+                price: savedOrder.price,
+                quantity: savedOrder.quantity,
+                filled: savedOrder.filled,
+            };
+            (order.side === "BUY" ? book.bids : book.asks).push(order);
+        }
+
+        for (const book of this.orderBooks) {
+            book.bids.sort((a: Order, b: Order) => b.price - a.price);
+            book.asks.sort((a: Order, b: Order) => a.price - b.price);
         }
     }
 
@@ -130,7 +171,7 @@ export class MatchEngine {
                     const quoteAsset = cancelOrderbook.quoteAsset;
                     const baseAsset = cancelOrderbook.baseAsset;
 
-                    if (order.side = "BUY") {
+                    if (order.side === "BUY") {
                         const price = cancelOrderbook.cancelBid(order);
                         const leftQuantity = (order.quantity - order.filled) * price;
                         this.ensureBalance(order.userId, quoteAsset);
@@ -150,6 +191,18 @@ export class MatchEngine {
                         type: "ORDER_CANCELLED",
                         payload: { orderId, executedQty: 0, remainingQty: 0 },
                     });
+                    this.pushBalancesToDb([order.userId]);
+                    this.pushOrderToDb({
+                        orderId: order.orderId,
+                        userId: order.userId,
+                        market: cancelMarket,
+                        side: order.side,
+                        price: order.price,
+                        quantity: order.quantity,
+                        filled: order.filled,
+                        status: "CANCELLED",
+                    });
+                    this.saveSnapshot();
                 } catch (e) {
                     console.log("Error while cancelling order:", e);
                 }
@@ -169,6 +222,7 @@ export class MatchEngine {
                         message.data.asset,
                         Number(message.data.amount),
                     );
+                    this.pushBalancesToDb([message.data.userId]);
                     RedisManager.getInstance().sendResult(clientId, {
                         type: "BALANCES",
                         payload: this.getBalancesPayload(message.data.userId),
@@ -291,19 +345,18 @@ export class MatchEngine {
             });
         }
 
-        if (fills.length > 0) {
-            this.pushOrderToDb({
-                orderId: order.orderId,
-                userId,
-                market,
-                side,
-                price: Number(price),
-                quantity: Number(quantity),
-                filled: executed,
-            });
-        }
+        this.pushOrderToDb({
+            orderId: order.orderId,
+            userId,
+            market,
+            side,
+            price: Number(price),
+            quantity: Number(quantity),
+            filled: executed,
+        });
 
         this.createDbTrades(fills, market, userId, order.orderId, side);
+        this.saveSnapshot();
 
         return { executed, fills, orderId: order.orderId };
     }
@@ -436,6 +489,7 @@ export class MatchEngine {
         price,
         quantity,
         filled,
+        status,
     }: {
         orderId: string;
         userId: string;
@@ -444,6 +498,7 @@ export class MatchEngine {
         price: number;
         quantity: number;
         filled: number;
+        status?: "OPEN" | "PARTIALLY_FILLED" | "FILLED" | "CANCELLED";
     }) {
         RedisManager.getInstance().pushMessage({
             type: "ORDER_ADDED",
@@ -455,7 +510,7 @@ export class MatchEngine {
                 price,
                 quantity,
                 filled,
-                status: filled === 0 ? "OPEN" : filled < quantity ? "PARTIALLY_FILLED" : "FILLED",
+                status: status ?? (filled === 0 ? "OPEN" : filled < quantity ? "PARTIALLY_FILLED" : "FILLED"),
                 timestamp: Date.now(),
             }
         });
@@ -489,6 +544,7 @@ export class MatchEngine {
         assetBalance.available += Number(amount);
         userBalance[asset] = assetBalance;
         this.balance.set(userId, userBalance);
+        this.saveSnapshot();
     }
 
     withdraw(userId: string, asset: string, amount: number) {
@@ -498,6 +554,7 @@ export class MatchEngine {
             throw new Error("Insufficient available balance");
         }
         assetBalance.available -= Number(amount);
+        this.saveSnapshot();
     }
 
     private validateWalletInput(userId: string, asset: string, amount: number) {
@@ -510,6 +567,7 @@ export class MatchEngine {
         const snapshot = {
             orderbooks: this.orderBooks.map((o: any) => ({
                 baseAsset: o.baseAsset,
+                quoteAsset: o.quoteAsset,
                 bids: o.bids,
                 asks: o.asks,
                 lastTradeId: o.lastTrade,
@@ -517,7 +575,10 @@ export class MatchEngine {
             })),
             balances: Array.from(this.balance.entries()),
         };
-        writeFileSync("./snapshot.json", JSON.stringify(snapshot));
+        mkdirSync(dirname(this.snapshotPath), { recursive: true });
+        const temporaryPath = `${this.snapshotPath}.${process.pid}.tmp`;
+        writeFileSync(temporaryPath, JSON.stringify(snapshot));
+        renameSync(temporaryPath, this.snapshotPath);
     }
 
     claimBalance(userId: string, asset: string, amount: number) {
@@ -526,6 +587,7 @@ export class MatchEngine {
         }
         this.ensureBalance(userId, asset);
         this.balance.get(userId)![asset]!.available += amount;
+        this.saveSnapshot();
     }
 
     private static TEST_USERS = new Set(["1", "2", "5"]);

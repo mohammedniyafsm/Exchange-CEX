@@ -23,12 +23,13 @@ export class orderBook {
     asks: Order[] = [];
     bids: Order[] = [];
     baseAsset: string; // in SOL_USDC , SOL is the base
-    quoteAsset: string = "USDC";  // USDC in SOL_USDC 
+    quoteAsset: string;
     lastTrade: number | 0;
     currentPrice: number | 0;
 
-    constructor(baseAsset: string, asks: Order[], bids: Order[], lastTrade: number, currentPrice: number) {
+    constructor(baseAsset: string, asks: Order[], bids: Order[], lastTrade: number, currentPrice: number, quoteAsset = "USDC") {
         this.baseAsset = baseAsset;
+        this.quoteAsset = quoteAsset;
         this.asks = asks;
         this.bids = bids;
         this.lastTrade = lastTrade;
@@ -237,7 +238,7 @@ export class orderBook {
     cancelAsk(order: Order) {
         const index = this.asks.findIndex((a) => a.orderId == order.orderId);
         if (index != -1) {
-            const price = this.bids[index]!.price;
+            const price = this.asks[index]!.price;
             this.asks.splice(index, 1);
             return price;
         }
