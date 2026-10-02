@@ -1,5 +1,6 @@
 import express, { type Request, type Response } from "express";
 import AuthRouter from "./router/auth/authRouter.js";
+import DepthRouter from "./router/depth/depthRouter.js";
 import OrderRouter from "./router/order/orderRouter.js";
 import WalletRouter from "./router/wallet/wallet.js";
 
@@ -18,6 +19,7 @@ app.get('/', (req: Request, res: Response) => {
 })
 
 app.use('/api/v1/auth', AuthRouter);
+app.use('/api/v1/depth', DepthRouter);
 app.use('/api/v1/orders', OrderRouter);
 app.use('/api/v1/balance', WalletRouter);
 

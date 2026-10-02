@@ -251,4 +251,22 @@ export class orderBook {
         ];
     }
 
+    getDepth() {
+        const aggregateLevels = (orders: Order[]) => {
+            const levels = new Map<number, number>();
+            for (const order of orders) {
+                const remaining = order.quantity - order.filled;
+                if (remaining > 0) {
+                    levels.set(order.price, (levels.get(order.price) ?? 0) + remaining);
+                }
+            }
+            return Array.from(levels, ([price, quantity]) => ({ price, quantity }));
+        };
+
+        return {
+            bids: aggregateLevels(this.bids).sort((a, b) => b.price - a.price),
+            asks: aggregateLevels(this.asks).sort((a, b) => a.price - b.price),
+        };
+    }
+
 }

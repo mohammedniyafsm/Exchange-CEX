@@ -27,14 +27,34 @@ export class RedisManager {
   }
 
   //Pub/sub send with clientId and subribe to that clientId event 
-  public sendAndWait(message: unknown) {
-    return new Promise((resolve) => {
+  public sendAndWait(message: unknown, timeoutMs = 5_000): Promise<unknown> {
+    return new Promise((resolve, reject) => {
       const id = this.getRandomId();
-      this.client.subscribe(id, (payload: string) => {
-        this.client.unsubscribe(id);
-        resolve(JSON.parse(payload));
-      });
-      this.publisher.lPush("messages", JSON.stringify({ clientId: id, message }));
+      let settled = false;
+      const timeout = setTimeout(() => fail(new Error("Engine request timed out")), timeoutMs);
+      const cleanup = () => {
+        clearTimeout(timeout);
+        void this.client.unsubscribe(id).catch(() => undefined);
+      };
+      const fail = (error: unknown) => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        reject(error);
+      };
+
+      void this.client.subscribe(id, (payload: string) => {
+        if (settled) return;
+        try {
+          const response = JSON.parse(payload);
+          settled = true;
+          cleanup();
+          resolve(response);
+        } catch (error) {
+          fail(error);
+        }
+      }).then(() => this.publisher.lPush("messages", JSON.stringify({ clientId: id, message })))
+        .catch(fail);
     });
   }
 

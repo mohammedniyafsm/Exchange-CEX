@@ -215,6 +215,27 @@ export class MatchEngine {
                 });
                 break;
 
+            case "GET_DEPTH": {
+                const market = message.data.market;
+                const depthOrderbook = this.orderBooks.find(
+                    (book: any) => book.getTicker() === market,
+                );
+
+                if (!depthOrderbook) {
+                    RedisManager.getInstance().sendResult(clientId, {
+                        type: "DEPTH_NOT_FOUND",
+                        payload: { market },
+                    });
+                    break;
+                }
+
+                RedisManager.getInstance().sendResult(clientId, {
+                    type: "DEPTH",
+                    payload: { market, ...depthOrderbook.getDepth() },
+                });
+                break;
+            }
+
             case "CLAIM_BALANCE":
                 try {
                     this.claimBalance(
