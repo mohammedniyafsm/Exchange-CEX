@@ -21,6 +21,7 @@ export class MatchEngine {
     private orderBooks: any = [];
     private balance: Map<string, UserBalance> = new Map();
     private hasSnapshot = false;
+    private readonly depthStreamId = randomUUID();
     private readonly snapshotPath = resolve(process.env.SNAPSHOT_PATH ?? "./snapshot.json");
 
     static async create() {
@@ -47,7 +48,7 @@ export class MatchEngine {
             this.hasSnapshot = true;
             const snapShotJson = JSON.parse(snapshot.toString());
             this.orderBooks = snapShotJson.orderbooks.map((o: any) =>
-                new orderBook(o.baseAsset, o.asks, o.bids, o.lastTradeId, o.currentPrice, o.quoteAsset ?? "USDC")
+                new orderBook(o.baseAsset, o.asks, o.bids, o.lastTradeId, o.currentPrice, o.quoteAsset ?? "USDC", o.depthSequence ?? 0)
             );
             this.balance = new Map(snapShotJson.balances);
         } else {
@@ -202,6 +203,7 @@ export class MatchEngine {
                         filled: order.filled,
                         status: "CANCELLED",
                     });
+                    this.publishDepth(cancelOrderbook);
                     this.saveSnapshot();
                 } catch (e) {
                     console.log("Error while cancelling order:", e);
@@ -231,7 +233,12 @@ export class MatchEngine {
 
                 RedisManager.getInstance().sendResult(clientId, {
                     type: "DEPTH",
-                    payload: { market, ...depthOrderbook.getDepth() },
+                    payload: {
+                        market,
+                        streamId: this.depthStreamId,
+                        sequence: depthOrderbook.depthSequence,
+                        ...depthOrderbook.getDepth(),
+                    },
                 });
                 break;
             }
@@ -377,11 +384,11 @@ export class MatchEngine {
         });
 
         this.createDbTrades(fills, market, userId, order.orderId, side);
+        this.publishDepth(orderbook);
         this.saveSnapshot();
 
         return { executed, fills, orderId: order.orderId };
     }
-
 
     // Validate available funds and move the order amount into locked balance.
     checkAndUpdateFund(userId: string, baseAsset: string, quoteAsset: string, price: number, quantity: number, side: Side) {
@@ -589,6 +596,7 @@ export class MatchEngine {
             orderbooks: this.orderBooks.map((o: any) => ({
                 baseAsset: o.baseAsset,
                 quoteAsset: o.quoteAsset,
+                depthSequence: o.depthSequence,
                 bids: o.bids,
                 asks: o.asks,
                 lastTradeId: o.lastTrade,
@@ -600,6 +608,27 @@ export class MatchEngine {
         const temporaryPath = `${this.snapshotPath}.${process.pid}.tmp`;
         writeFileSync(temporaryPath, JSON.stringify(snapshot));
         renameSync(temporaryPath, this.snapshotPath);
+    }
+
+    private publishDepth(book: orderBook) {
+        book.depthSequence += 1;
+        const payload = {
+            type: "DEPTH_UPDATE",
+            market: book.getTicker(),
+            streamId: this.depthStreamId,
+            sequence: book.depthSequence,
+            ...book.getDepth(),
+        };
+        const channel = `market:depth:${book.getTicker()}`;
+        void RedisManager.getInstance().publishDepth(book.getTicker(), payload)
+            .then((subscriberCount) => {
+                console.log("[ENGINE][DEPTH] Published", {
+                    channel,
+                    subscriberCount,
+                    payload,
+                });
+            })
+            .catch((error) => console.error("Failed to publish depth update", error));
     }
 
     claimBalance(userId: string, asset: string, amount: number) {

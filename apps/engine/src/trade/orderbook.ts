@@ -26,14 +26,16 @@ export class orderBook {
     quoteAsset: string;
     lastTrade: number | 0;
     currentPrice: number | 0;
+    depthSequence: number;
 
-    constructor(baseAsset: string, asks: Order[], bids: Order[], lastTrade: number, currentPrice: number, quoteAsset = "USDC") {
+    constructor(baseAsset: string, asks: Order[], bids: Order[], lastTrade: number, currentPrice: number, quoteAsset = "USDC", depthSequence = 0) {
         this.baseAsset = baseAsset;
         this.quoteAsset = quoteAsset;
         this.asks = asks;
         this.bids = bids;
         this.lastTrade = lastTrade;
         this.currentPrice = currentPrice;
+        this.depthSequence = depthSequence;
     }
 
     getTicker() {

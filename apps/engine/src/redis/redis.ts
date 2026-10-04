@@ -35,6 +35,13 @@ export class RedisManager {
         );
     }
 
+    public async publishDepth(market: string, payload: unknown): Promise<number> {
+        return await this.client.publish(
+            `market:depth:${market}`,
+            JSON.stringify(payload),
+        );
+    }
+
     public async pushMessage(message: any) {
         await this.client.lPush(
             "db_processor",
