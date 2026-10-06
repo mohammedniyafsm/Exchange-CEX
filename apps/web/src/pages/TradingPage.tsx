@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { CandlestickChart } from '../components/trading/CandlestickChart'
+import { MarketChart } from '../components/trading/MarketChart'
 import { OrderBook } from '../components/trading/OrderBook'
 import { Toast, type ToastItem } from '../components/ui/Toast'
 import { mockApi } from '../services/mockApi'
@@ -147,6 +147,14 @@ export default function TradingPage() {
   }, [userId])
 
   const currentPrice = useMemo(() => candles[candles.length - 1]?.close ?? FALLBACK_PRICE, [candles])
+  const chartCandles = useMemo(() => candles.map((candle) => ({
+    t: Date.parse(candle.time),
+    open: candle.open,
+    high: candle.high,
+    low: candle.low,
+    close: candle.close,
+    volume: candle.volume
+  })), [candles])
   const change = useMemo(() => ((currentPrice - (candles[0]?.close ?? currentPrice)) / (candles[0]?.close ?? currentPrice)) * 100, [candles, currentPrice])
   const total = (Number(price) || 0) * (Number(quantity) || 0)
 
@@ -230,11 +238,7 @@ export default function TradingPage() {
               <button>Reset</button>
             </div>
           </div>
-          <div className="chart-panel-header">
-            <span>SOL/USDC · 1h · Backpack</span>
-            <span>{loading ? 'Loading...' : 'Spot market'}</span>
-          </div>
-          <CandlestickChart candles={candles} currentPrice={currentPrice} />
+          <MarketChart data={chartCandles} loading={loading} live />
         </main>
 
         <div className="right-stack">
