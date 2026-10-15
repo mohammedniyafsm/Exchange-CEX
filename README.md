@@ -57,3 +57,14 @@ A primary metric in these systems is the trade execution time. I was able to ach
  -> For running the entire app, run `docker compose up --build`
 ---
 
+## Local trading UI integration
+
+The web trade screen uses the existing API, matching engine, Redis, and WebSocket services. It reads SOL/USDC candles, recent trades, and order-book depth from the backend; orders and balances require a signed-in account.
+
+1. Configure PostgreSQL in `packages/database/.env` and apply the Prisma schema with `pnpm --filter @repo/db db:push`.
+2. Copy `apps/api/.env.example` to `apps/api/.env` and set `DATABASE_URL`, `REDIS_URL`, `WEB_ORIGIN`, and a unique, long `JWT_SECRET`. Never use the example JWT value in a deployed environment.
+3. Configure the matching engine and WebSocket server with the same Redis URL. `apps/engine/.env.example` and `apps/websocket/.env.example` show the expected variables.
+4. Start Redis and PostgreSQL, then run `pnpm --filter backend dev`, `pnpm --filter engine dev`, and `pnpm --filter websocket dev` in separate terminals. Run the database worker as well to persist matching-engine order, balance, and trade updates.
+5. Start the web app with `pnpm --filter web dev`. The frontend defaults to `http://localhost:3001/api/v1` and `ws://localhost:8081`; set `VITE_API_URL` or `VITE_WS_URL` in `apps/web/.env` to override them.
+
+The API listens on port 3001 and the market WebSocket server on port 8081 by default. Account endpoints verify the bearer JWT and confirm that its user still exists. Live depth and trades come from this matching engine, not an external exchange feed. Market candles are built from persisted trades, so a new database with no executions will correctly show no candle history until trades have been recorded.

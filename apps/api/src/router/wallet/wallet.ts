@@ -6,8 +6,30 @@ import { RedisManager } from "../../redis/redis.js";
 
 const WalletRouter: Router = Router();
 
-
 WalletRouter.use(authMiddleware);
+
+WalletRouter.get("/", async (req: AuthRequest, res: Response) => {
+    try {
+        const userId = req.userId;
+        if (!userId) {
+            return res.status(401).json({ success: false, message: "Authentication required" });
+        }
+
+        const result = await RedisManager.getInstance().sendAndWait({
+            type: "GET_BALANCES",
+            data: { userId }
+        }) as { type?: string; payload?: { balances?: { asset: string; available: string; locked: string }[] } };
+
+        if (result.type !== "BALANCES" || !result.payload?.balances) {
+            return res.status(502).json({ success: false, message: "Unable to retrieve balances" });
+        }
+
+        return res.json({ success: true, balances: result.payload.balances });
+    } catch (error) {
+        console.error("Failed to retrieve user balances", error);
+        return res.status(503).json({ success: false, message: "Balance service unavailable" });
+    }
+});
 
 async function processWalletOperation(req: AuthRequest, res: Response, type: "DEPOSIT" | "WITHDRAW") {
     try {
@@ -42,6 +64,5 @@ async function processWalletOperation(req: AuthRequest, res: Response, type: "DE
 
 WalletRouter.post("/deposit", (req, res) => processWalletOperation(req, res, "DEPOSIT"));
 WalletRouter.post("/withdraw", (req, res) => processWalletOperation(req, res, "WITHDRAW"));
-WalletRouter.post("/wallet", (req, res) => processWalletOperation(req, res, "DEPOSIT"));
 
 export default WalletRouter;

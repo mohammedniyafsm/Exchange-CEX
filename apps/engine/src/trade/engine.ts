@@ -138,11 +138,9 @@ export class MatchEngine {
                     console.error("[ENGINE][CREATE_ORDER] Failed", error);
                     console.log("");
                     RedisManager.getInstance().sendResult(clientId, {
-                        type: "ORDER_CANCELLED",
+                        type: "ORDER_REJECTED",
                         payload: {
-                            orderId: "",
-                            executed: 0,
-                            remaining: 0
+                            message: error instanceof Error ? error.message : "Order rejected"
                         }
                     })
                 }
@@ -205,12 +203,18 @@ export class MatchEngine {
                     });
                     this.publishDepth(cancelOrderbook);
                     this.saveSnapshot();
-                } catch (e) {
-                    console.log("Error while cancelling order:", e);
+                } catch (error) {
+                    console.error("Error while cancelling order:", error);
+                    RedisManager.getInstance().sendResult(clientId, {
+                        type: "ORDER_CANCEL_FAILED",
+                        payload: { message: error instanceof Error ? error.message : "Unable to cancel order" },
+                    });
                 }
                 break;
 
             case "GET_BALANCES":
+                this.ensureBalance(message.data.userId, "SOL");
+                this.ensureBalance(message.data.userId, "USDC");
                 RedisManager.getInstance().sendResult(clientId, {
                     type: "BALANCES",
                     payload: this.getBalancesPayload(message.data.userId),
@@ -548,6 +552,7 @@ export class MatchEngine {
     createDbTrades(fills: any, market: string, userId: string, orderId: string, side: Side) {
         const isBuy = side === "BUY";
         fills.forEach((fill: any) => {
+            const timestamp = Date.now();
             RedisManager.getInstance().pushMessage({
                 type: "TRADE_ADDED",
                 data: {
@@ -559,9 +564,18 @@ export class MatchEngine {
                     sellOrderId: isBuy ? fill.marketOrderId : orderId,
                     buyUserId: isBuy ? userId : fill.otherUserId,
                     sellUserId: isBuy ? fill.otherUserId : userId,
-                    timestamp: Date.now(),
+                    timestamp,
                 }
             });
+            void RedisManager.getInstance().publishTrade(market, {
+                type: "TRADE_UPDATE",
+                id: Number(fill.tradeId),
+                market,
+                t: timestamp,
+                price: Number(fill.price),
+                quantity: Number(fill.quantity),
+                side,
+            }).catch((error) => console.error("Failed to publish trade update", error));
         });
     }
 
@@ -664,4 +678,3 @@ export class MatchEngine {
     }
 
 }
-

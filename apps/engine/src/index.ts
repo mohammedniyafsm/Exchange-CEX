@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { RedisManager } from "./redis/redis.js";
 import { MatchEngine } from "./trade/engine.js";
 import type { Side } from "./trade/orderbook.js";
@@ -32,6 +33,5 @@ async function main() {
 }
 
 main();
-
 
 

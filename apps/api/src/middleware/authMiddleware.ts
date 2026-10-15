@@ -1,4 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
+import { prisma } from "@repo/db";
 import { authService } from "../router/auth/authService.js";
 
 export interface AuthRequest extends Request {
@@ -11,6 +12,10 @@ export const authMiddleware = (
   res: Response,
   next: NextFunction
 ): void => {
+  void authenticate(req, res, next);
+};
+
+async function authenticate(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
     const authHeader = req.headers.authorization;
 
@@ -33,14 +38,27 @@ export const authMiddleware = (
       return;
     }
 
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.id },
+      select: { id: true, email: true }
+    });
+    if (!user || user.email !== decoded.email) {
+      res.status(401).json({
+        success: false,
+        message: "User account no longer exists"
+      });
+      return;
+    }
+
     req.userId = decoded.id;
     req.userEmail = decoded.email;
 
     next();
   } catch (error) {
-    res.status(401).json({
+    console.error("Authentication middleware failed", error);
+    res.status(500).json({
       success: false,
       message: "Authentication failed"
     });
   }
-};
+}

@@ -615,6 +615,7 @@ button { cursor: pointer; }
 }
 
 .exchange-app {
+  --exchange-sidebar-width: 184px;
   --exchange-bg: #0d0e13;
   --exchange-panel: #13151b;
   --exchange-panel-soft: #1b1d24;
@@ -645,9 +646,9 @@ button { cursor: pointer; }
   position: sticky;
   top: 0;
   display: flex;
-  width: 212px;
+  width: var(--exchange-sidebar-width);
   height: 100vh;
-  flex: 0 0 212px;
+  flex: 0 0 var(--exchange-sidebar-width);
   flex-direction: column;
   border-right: 1px solid #1c1e25;
   background: #0e0f14;
@@ -655,7 +656,7 @@ button { cursor: pointer; }
 
 .exchange-brand {
   display: flex;
-  height: 56px;
+  height: 42px;
   align-items: center;
   gap: 8px;
   padding: 0 18px;
@@ -680,13 +681,13 @@ button { cursor: pointer; }
 .exchange-nav {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
   padding: 0 7px;
 }
 
 .exchange-nav-item {
   display: flex;
-  min-height: 36px;
+  min-height: 30px;
   align-items: center;
   gap: 11px;
   border: 0;
@@ -696,7 +697,7 @@ button { cursor: pointer; }
   color: #9298a8;
   text-align: left;
   text-decoration: none;
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .exchange-nav-item:hover,
@@ -714,9 +715,129 @@ button { cursor: pointer; }
   color: #757a89;
 }
 
+.sidebar-panel-trigger[aria-expanded="true"] {
+  background: #22242c;
+  color: #f1f2f6;
+}
+
 .nav-external {
   margin-left: auto;
   color: #737988;
+}
+
+.sidebar-detail-panel {
+  position: fixed;
+  z-index: 10;
+  top: 42px;
+  bottom: 0;
+  left: var(--exchange-sidebar-width);
+  width: 300px;
+  overflow-y: auto;
+  border: 1px solid #242630;
+  border-left: 0;
+  background: #13151b;
+  box-shadow: 14px 0 30px #0005;
+}
+
+.sidebar-detail-header {
+  display: flex;
+  min-height: 58px;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #22242c;
+  padding: 0 14px;
+}
+
+.sidebar-detail-header > div,
+.sidebar-balance-row > div,
+.sidebar-order-row > div {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.sidebar-detail-header strong {
+  color: #e6e8ef;
+  font-size: 14px;
+}
+
+.sidebar-detail-header span,
+.sidebar-balance-row span,
+.sidebar-order-row span {
+  color: #858a9a;
+  font-size: 10px;
+}
+
+.sidebar-detail-header button {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #9aa0af;
+}
+
+.sidebar-detail-header button:hover {
+  background: #22242c;
+  color: #fff;
+}
+
+.sidebar-balance-list,
+.sidebar-order-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-balance-row,
+.sidebar-order-row {
+  display: flex;
+  min-height: 62px;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #20222a;
+  padding: 9px 14px;
+}
+
+.sidebar-empty {
+  padding: 18px 14px;
+  color: #858a9a;
+  font-size: 11px;
+}
+
+.sidebar-balance-row > div:last-child,
+.sidebar-order-row > div:last-child {
+  align-items: flex-end;
+  text-align: right;
+}
+
+.sidebar-balance-row strong,
+.sidebar-order-row strong {
+  color: #e6e8ef;
+  font-size: 12px;
+  font-weight: 550;
+}
+
+.sidebar-order-row .positive-text {
+  color: #00c985;
+}
+
+.sidebar-order-row .negative-text {
+  color: #f04452;
+}
+
+.sidebar-order-row > div:last-child button {
+  margin-top: 3px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: #8d95a5;
+  font-size: 10px;
+}
+
+.sidebar-order-row > div:last-child button:hover {
+  color: #f04452;
 }
 
 .exchange-sidebar-bottom {
@@ -740,7 +861,7 @@ button { cursor: pointer; }
 .exchange-topbar {
   position: relative;
   display: flex;
-  height: 48px;
+  height: 42px;
   align-items: center;
   justify-content: flex-end;
   border-bottom: 1px solid #16181e;
@@ -749,10 +870,10 @@ button { cursor: pointer; }
 
 .exchange-search {
   position: absolute;
-  left: 50%;
+  left: calc(50vw - var(--exchange-sidebar-width));
   display: flex;
-  width: min(400px, 45%);
-  height: 32px;
+  width: min(334px, 45%);
+  height: 30px;
   align-items: center;
   gap: 8px;
   transform: translateX(-50%);
@@ -802,6 +923,14 @@ button { cursor: pointer; }
   color: #a6acba;
 }
 
+.signed-in-email {
+  max-width: 180px;
+  overflow: hidden;
+  color: #a6acba;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .icon-action {
   width: 27px;
   padding: 0;
@@ -830,10 +959,10 @@ button { cursor: pointer; }
 
 .exchange-layout {
   display: grid;
-  min-height: calc(100vh - 48px);
-  grid-template-columns: minmax(0, 1fr) 304px;
-  gap: 18px;
-  padding: 0 10px 0 8px;
+  min-height: calc(100vh - 42px);
+  grid-template-columns: minmax(0, 1fr) 256px;
+  gap: 14px;
+  padding: 0 2px 0 0;
 }
 
 .exchange-left {
@@ -844,15 +973,15 @@ button { cursor: pointer; }
 
 .market-summary {
   display: flex;
-  min-height: 58px;
-  flex: 0 0 58px;
+  min-height: 50px;
+  flex: 0 0 50px;
   align-items: center;
-  gap: 19px;
+  gap: 16px;
   overflow: hidden;
   border: 1px solid #1a1c23;
   border-radius: 8px;
   background: #13151b;
-  padding: 0 15px;
+  padding: 0 12px;
 }
 
 .market-pair {
@@ -934,22 +1063,25 @@ button { cursor: pointer; }
   color: var(--exchange-red);
 }
 
+.market-stat .up-text {
+  color: var(--exchange-green);
+}
+
 .volume-stat {
   min-width: 125px;
 }
 
 .exchange-board {
   display: grid;
-  height: min(554px, calc(100vh - 207px));
+  height: min(641px, calc(100vh - 97px));
   min-height: 400px;
-  grid-template-columns: minmax(0, 1fr) 266px;
+  grid-template-columns: minmax(0, 1fr) 225px;
   gap: 6px;
-  margin-top: 7px;
+  margin-top: 5px;
 }
 
 .chart-card,
-.book-card,
-.account-card {
+.book-card {
   min-width: 0;
   overflow: hidden;
   border: 1px solid #1b1d24;
@@ -965,8 +1097,8 @@ button { cursor: pointer; }
 
 .chart-tabs-row {
   display: flex;
-  height: 46px;
-  flex: 0 0 46px;
+  height: 39px;
+  flex: 0 0 39px;
   align-items: center;
   padding: 0 11px;
 }
@@ -995,8 +1127,8 @@ button { cursor: pointer; }
 
 .chart-tools {
   display: flex;
-  height: 40px;
-  flex: 0 0 40px;
+  height: 36px;
+  flex: 0 0 36px;
   align-items: center;
   gap: 11px;
   border-bottom: 1px solid #20222a;
@@ -1296,6 +1428,13 @@ button { cursor: pointer; }
   justify-content: space-evenly;
 }
 
+.book-empty {
+  padding: 12px 0;
+  color: #777e8d;
+  font-size: 10px;
+  text-align: center;
+}
+
 .book-line {
   position: relative;
   min-height: 17px;
@@ -1401,53 +1540,12 @@ button { cursor: pointer; }
   color: #f0525c;
 }
 
-.trade-line span {
+.trade-line.neutral b {
   color: #b5bac7;
 }
 
-.account-card {
-  min-height: 87px;
-  margin-top: 7px;
-}
-
-.account-tabs {
-  display: flex;
-  min-height: 43px;
-  align-items: center;
-  gap: 4px;
-  overflow: hidden;
-  padding: 0 10px;
-}
-
-.account-tabs button {
-  display: inline-flex;
-  height: 30px;
-  flex: 0 0 auto;
-  align-items: center;
-  border: 0;
-  border-radius: 7px;
-  background: transparent;
-  padding: 0 10px;
-  color: #a6adbd;
-  font-size: 11px;
-}
-
-.account-tabs button.active {
-  background: #22242c;
-  color: #f4f5f8;
-  font-weight: 650;
-}
-
-.account-tabs .account-history-link {
-  gap: 3px;
-  margin-left: auto;
-  color: #aeb5c4;
-}
-
-.account-empty {
-  padding: 10px 18px;
-  color: #777e8d;
-  font-size: 11px;
+.trade-line span {
+  color: #b5bac7;
 }
 
 .exchange-rail {
@@ -1459,12 +1557,12 @@ button { cursor: pointer; }
   border: 1px solid #1c1e25;
   border-radius: 9px;
   background: #13151b;
-  padding: 10px 11px 9px;
+  padding: 10px 9px 8px;
 }
 
 .buy-sell-toggle {
   display: grid;
-  height: 40px;
+  height: 32px;
   grid-template-columns: 1fr 1fr;
   border-radius: 11px;
   background: #191b22;
@@ -1491,35 +1589,27 @@ button { cursor: pointer; }
 
 .order-type-tabs {
   display: flex;
-  height: 42px;
+  height: 36px;
   align-items: center;
-  gap: 4px;
-  margin-top: 4px;
+  margin-top: 12px;
 }
 
-.order-type-tabs button {
+.order-type-selected {
   display: inline-flex;
   height: 28px;
   align-items: center;
-  gap: 4px;
-  border: 0;
   border-radius: 7px;
-  background: transparent;
-  padding: 0 8px;
-  color: #9da4b3;
-  font-size: 11px;
-}
-
-.order-type-tabs button.active {
   background: #22242c;
+  padding: 0 8px;
   color: #f0f1f5;
+  font-size: 11px;
   font-weight: 600;
 }
 
 .order-balance {
   display: flex;
   justify-content: space-between;
-  margin: 0 0 14px;
+  margin: 0 0 10px;
   color: #9ba2b1;
   font-size: 10px;
 }
@@ -1532,9 +1622,10 @@ button { cursor: pointer; }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin: 0 0 5px;
+  margin: 0;
   color: #989eae;
   font-size: 10px;
+  line-height: 12px;
 }
 
 .input-caption button {
@@ -1550,7 +1641,7 @@ button { cursor: pointer; }
 
 .order-input {
   display: flex;
-  height: 41px;
+  height: 34px;
   align-items: center;
   justify-content: space-between;
   border: 1px solid transparent;
@@ -1596,7 +1687,7 @@ button { cursor: pointer; }
 }
 
 .quantity-caption {
-  margin-top: 12px;
+  margin: 12px 0 2px;
 }
 
 .quantity-caption > span {
@@ -1605,13 +1696,13 @@ button { cursor: pointer; }
 
 .allocation-slider {
   position: relative;
-  height: 44px;
+  height: 40px;
   padding-top: 10px;
 }
 
 .allocation-slider input {
   position: absolute;
-  top: 15px;
+  top: 13px;
   left: 0;
   width: 100%;
   height: 3px;
@@ -1642,7 +1733,7 @@ button { cursor: pointer; }
 
 .slider-marks {
   position: absolute;
-  top: 11px;
+  top: 9px;
   right: 0;
   left: 0;
   display: flex;
@@ -1673,18 +1764,18 @@ button { cursor: pointer; }
 }
 
 .value-caption {
-  margin: 0 0 5px;
+  margin: 1px 0 3px;
 }
 
 .value-input {
-  height: 41px;
+  height: 35px;
   color: #e1e4ec;
   font-size: 16px;
 }
 
 .trade-cta {
   width: 100%;
-  height: 37px;
+  height: 32px;
   border: 0;
   border-radius: 11px;
   font-size: 12px;
@@ -1692,82 +1783,136 @@ button { cursor: pointer; }
 }
 
 .signup-cta {
-  margin-top: 20px;
+  margin-top: 17px;
   background: #f6f6f8;
   color: #1a1b20 !important;
 }
 
-.login-cta {
-  margin-top: 10px;
-  background: #202229;
-  color: #e5e7ee !important;
+.sell-cta {
+  margin-top: 17px;
+  background: #e64555;
+  color: #fff !important;
 }
 
-.order-options {
-  display: flex;
-  gap: 14px;
-  margin-top: 15px;
+.trade-cta:disabled {
+  cursor: wait;
+  opacity: .65;
 }
 
-.order-options label {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  color: #a1a8b7;
-  font-size: 10px;
+.input-caption button:disabled {
+  cursor: not-allowed;
+  opacity: .5;
 }
 
-.order-options input {
-  width: 13px;
-  height: 13px;
-  margin: 0;
-  accent-color: #3185ff;
+.chart-instrument-title i.is-connected {
+  background: #00c985;
+  box-shadow: 0 0 0 5px #13342f;
 }
 
-.perp-card {
-  display: flex;
-  width: 100%;
-  min-height: 65px;
-  align-items: center;
-  gap: 12px;
-  margin-top: 7px;
-  border: 1px solid #1c1e25;
-  border-radius: 9px;
-  background: #13151b;
-  padding: 0 13px;
-  text-align: left;
+.auth-dialog-backdrop {
+  position: fixed;
+  z-index: 20;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(4, 5, 8, .72);
+  padding: 16px;
 }
 
-.perp-card > span:last-child {
+.auth-dialog {
+  position: relative;
+  width: min(100%, 390px);
+  border: 1px solid #2a2d36;
+  border-radius: 12px;
+  background: #15171e;
+  padding: 26px;
+  box-shadow: 0 18px 60px #0009;
+}
+
+.auth-dialog h2 {
+  margin: 0 28px 7px 0;
+  color: #f1f2f6;
+  font-size: 18px;
+}
+
+.auth-dialog p {
+  margin: 0 0 20px;
+  color: #9298a8;
+  font-size: 12px;
+}
+
+.auth-dialog-close {
+  position: absolute;
+  top: 13px;
+  right: 13px;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #a6adbd;
+  font-size: 22px;
+}
+
+.auth-dialog form,
+.auth-dialog form label {
   display: flex;
   flex-direction: column;
-  gap: 4px;
 }
 
-.perp-card strong {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  color: #e5e7ee;
-  font-size: 12px;
+.auth-dialog form {
+  gap: 13px;
+}
+
+.auth-dialog form label {
+  gap: 6px;
+  color: #a6adbd;
+  font-size: 11px;
+}
+
+.auth-dialog form input {
+  height: 38px;
+  border: 1px solid #2b2e38;
+  border-radius: 7px;
+  outline: none;
+  background: #202229;
+  padding: 0 10px;
+  color: #f1f2f6;
+}
+
+.auth-dialog form input:focus {
+  border-color: #4d91ff;
+}
+
+.auth-dialog-error {
+  color: #ff6875;
+  font-size: 11px;
+}
+
+.auth-dialog-submit {
+  height: 38px;
+  border: 0;
+  border-radius: 7px;
+  background: #f5f5f7;
+  color: #15161b !important;
   font-weight: 650;
 }
 
-.perp-card strong svg {
-  color: #737b8b;
+.auth-dialog-submit:disabled {
+  cursor: wait;
+  opacity: .65;
 }
 
-.perp-card small {
-  color: #9ca3b1;
-  font-size: 10px;
+.auth-dialog-switch {
+  width: 100%;
+  margin-top: 14px;
+  border: 0;
+  background: transparent;
+  color: #83adff !important;
+  font-size: 11px;
 }
 
-.perp-card small b {
-  color: #e1e4eb;
-  font-weight: 500;
-}
-
-.demo-notice {
+.exchange-notice {
   position: fixed;
   z-index: 5;
   right: 20px;
@@ -1783,7 +1928,7 @@ button { cursor: pointer; }
   box-shadow: 0 8px 30px #0008;
 }
 
-.demo-notice button {
+.exchange-notice button {
   display: inline-flex;
   border: 0;
   background: transparent;
@@ -1793,12 +1938,12 @@ button { cursor: pointer; }
 
 @media (max-width: 1350px) {
   .exchange-layout {
-    grid-template-columns: minmax(0, 1fr) 285px;
-    gap: 10px;
+    grid-template-columns: minmax(0, 1fr) 270px;
+    gap: 12px;
   }
 
   .exchange-board {
-    grid-template-columns: minmax(0, 1fr) 235px;
+    grid-template-columns: minmax(0, 1fr) 215px;
   }
 
   .market-summary {
@@ -1811,18 +1956,13 @@ button { cursor: pointer; }
     min-width: 112px;
   }
 
-  .account-tabs {
-    gap: 0;
-    padding: 0 4px;
-  }
-
-  .account-tabs button {
-    padding: 0 7px;
-    font-size: 10px;
-  }
 }
 
 @media (max-width: 1050px) {
+  .exchange-app {
+    --exchange-sidebar-width: 60px;
+  }
+
   .exchange-sidebar {
     width: 60px;
     flex-basis: 60px;
@@ -1863,9 +2003,6 @@ button { cursor: pointer; }
     display: none;
   }
 
-  .account-tabs button:nth-child(n+6):not(.account-history-link) {
-    display: none;
-  }
 }
 
 @media (max-width: 760px) {
@@ -1915,8 +2052,24 @@ button { cursor: pointer; }
     font-size: 0;
   }
 
+  .exchange-nav-item.sidebar-panel-trigger {
+    display: flex;
+    width: 36px;
+    min-width: 36px;
+    justify-content: center;
+    padding: 0;
+    font-size: 0;
+  }
+
   .exchange-sidebar-bottom {
     display: none;
+  }
+
+  .sidebar-detail-panel {
+    top: 52px;
+    left: 0;
+    width: min(300px, 88vw);
+    height: calc(100vh - 52px);
   }
 
   .exchange-topbar {
@@ -1979,21 +2132,6 @@ button { cursor: pointer; }
     padding: 10px;
   }
 
-  .account-card {
-    min-height: 80px;
-  }
-
-  .account-tabs {
-    overflow-x: auto;
-  }
-
-  .account-tabs button:nth-child(n+6):not(.account-history-link) {
-    display: inline-flex;
-  }
-
-  .account-tabs .account-history-link {
-    display: none;
-  }
 }
 
 @media (max-width: 470px) {
@@ -2068,7 +2206,4 @@ button { cursor: pointer; }
     gap: 8px;
   }
 
-  .account-tabs button {
-    padding: 0 8px;
-  }
 }

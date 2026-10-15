@@ -39,24 +39,35 @@ export class User {
 
     private addListeners() {
         this.ws.on("message", (message: string) => {
-            const parsedMessage = JSON.parse(message);
+            try {
+                const parsedMessage = JSON.parse(message.toString());
+                if (
+                    !["SUBSCRIBE", "UNSUBSCRIBE"].includes(parsedMessage.method) ||
+                    !Array.isArray(parsedMessage.params) ||
+                    !parsedMessage.params.every((channel: unknown) =>
+                        typeof channel === "string" &&
+                        /^market:(depth|trades):[A-Z0-9]+_[A-Z0-9]+$/.test(channel)
+                    )
+                ) {
+                    this.emit({ type: "ERROR", message: "Invalid subscription request" });
+                    return;
+                }
 
-            if (parsedMessage.method === "SUBSCRIBE") {
-                parsedMessage.params.forEach((s: string) => {
-                    console.log(`[WS] ${this.id} subscribed: ${s}`);
-                    subscriptionManager.getInstance().subscribe(this.id, s)
-                })
+                if (parsedMessage.method === "SUBSCRIBE") {
+                    parsedMessage.params.forEach((channel: string) => {
+                        subscriptionManager.getInstance().subscribe(this.id, channel);
+                    });
+                }
+
+                if (parsedMessage.method === "UNSUBSCRIBE") {
+                    parsedMessage.params.forEach((channel: string) => {
+                        subscriptionManager.getInstance().unSubscribe(this.id, channel);
+                    });
+                }
+            } catch (error) {
+                console.error(`[WS] Invalid message from ${this.id}`, error);
+                this.emit({ type: "ERROR", message: "Invalid JSON message" });
             }
-
-            if (parsedMessage.method == "UNSUBSCRIBE") {
-                parsedMessage.params.forEach((s: any) =>
-                    {
-                        console.log(`[WS] ${this.id} unsubscribed: ${s}`);
-                        subscriptionManager.getInstance().unSubscribe(this.id, s);
-                    },
-                );
-            }
-
         })
     }
 }

@@ -34,7 +34,6 @@ export function MarketChart({ data, symbol = 'SOL/USDC', name = 'Solana', height
   const [visibleBars, setVisibleBars] = useState(data.length)
   const [hoverIndex, setHoverIndex] = useState<number | null>(null)
   const [hoverY, setHoverY] = useState<number | null>(null)
-  const [liveTicks, setLiveTicks] = useState<MarketChartCandle[]>([])
 
   useEffect(() => {
     const element = wrapRef.current
@@ -49,27 +48,11 @@ export function MarketChart({ data, symbol = 'SOL/USDC', name = 'Solana', height
     [data],
   )
   useEffect(() => {
-    setLiveTicks([])
-    if (!live || validData.length === 0) return
-
-    let previous = validData[validData.length - 1]
-    const interval = window.setInterval(() => {
-      const close = Math.max(0.000001, previous.close * (1 + (Math.random() - 0.48) * 0.002))
-      const next: MarketChartCandle = {
-        t: previous.t + 60_000,
-        open: previous.close,
-        high: Math.max(previous.close, close) * (1 + Math.random() * 0.001),
-        low: Math.min(previous.close, close) * (1 - Math.random() * 0.001),
-        close,
-        volume: Math.max(1, previous.volume * (0.6 + Math.random())),
-      }
-      previous = next
-      setLiveTicks((current) => [...current, next].slice(-120))
-    }, 1600)
-
-    return () => window.clearInterval(interval)
-  }, [live, validData])
-  const series = useMemo(() => liveTicks.length > 0 ? [...validData, ...liveTicks] : validData, [liveTicks, validData])
+    if (validData.length > 0) {
+      setVisibleBars((current) => current === 0 ? validData.length : Math.min(current, validData.length))
+    }
+  }, [validData.length])
+  const series = validData
   const presetBars = chartRange === '1d' ? 8 : chartRange === '5d' ? 40 : series.length
   const boundedVisibleBars = Math.max(1, Math.min(visibleBars, series.length || 1))
   const maxStart = Math.max(0, series.length - boundedVisibleBars)
@@ -217,7 +200,7 @@ export function MarketChart({ data, symbol = 'SOL/USDC', name = 'Solana', height
           <div className="market-chart-title">
             <strong>{symbol}</strong>
             <span>{name}</span>
-            <span className={`market-chart-status${live && !loading ? ' is-live' : ''}`}>{loading ? 'Loading…' : live ? 'Demo live' : 'Spot market'}</span>
+            <span className={`market-chart-status${live && !loading ? ' is-live' : ''}`}>{loading ? 'Loading…' : live ? 'Live' : 'Spot market'}</span>
           </div>
           <div className="market-chart-price-row">
             <strong>{formatPrice(shownCandle?.close ?? 0)}</strong>
@@ -324,7 +307,7 @@ export function MarketChart({ data, symbol = 'SOL/USDC', name = 'Solana', height
             )}
           </svg>
         ) : (
-          <div className="market-chart-empty">{data.length > 0 ? 'Preparing chart…' : 'No price data available'}</div>
+          <div className="market-chart-empty">{loading ? 'Loading market history…' : data.length > 0 ? 'Preparing chart…' : 'No price data available'}</div>
         )}
         {width > 0 && candles.length > 0 && (
           <div className="market-chart-nav" aria-label="Chart controls">
