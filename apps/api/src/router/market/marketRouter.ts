@@ -31,17 +31,25 @@ MarketRouter.get("/:market/candles", async (req, res) => {
       close: number;
       volume: number;
     }>>`
+      WITH binned_trades AS (
+        SELECT
+          date_bin(${bucket}::interval, "createdAt", TIMESTAMP '2000-01-01') AS bucket_time,
+          price,
+          quantity,
+          "createdAt"
+        FROM "Trade"
+        WHERE market = ${market}
+      )
       SELECT
-        date_bin(${bucket}::interval, "createdAt", TIMESTAMP '2000-01-01') AS time,
+        bucket_time AS time,
         (array_agg(price ORDER BY "createdAt" ASC))[1] AS open,
         MAX(price) AS high,
         MIN(price) AS low,
         (array_agg(price ORDER BY "createdAt" DESC))[1] AS close,
         SUM(quantity) AS volume
-      FROM "Trade"
-      WHERE market = ${market}
-      GROUP BY date_bin(${bucket}::interval, "createdAt", TIMESTAMP '2000-01-01')
-      ORDER BY time DESC
+      FROM binned_trades
+      GROUP BY bucket_time
+      ORDER BY bucket_time DESC
       LIMIT ${limit}
     `;
 
