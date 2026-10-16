@@ -1,334 +1,316 @@
 import axios from "axios";
+import "dotenv/config";
 
 const BASE_URL = process.env.BASE_URL ?? "http://localhost:3001";
-const USER_ID = process.env.MARKET_MAKER_USER_ID ?? "5";
+const MARKET = "SOL_USDC";
 
-const TICK_MS = Number(process.env.TICK_MS ?? 450);
-const REAL_PRICE_REFRESH_MS = 15_000;
-const RAMP_WINDOW_MS = 60_000;
-const LADDER_LEVELS = Number(process.env.LADDER_LEVELS ?? 10);
-const LADDER_SPREAD_BPS = 25;
-const LADDER_PER_LEVEL_MAX_BPS = Number(
-    process.env.LADDER_PER_LEVEL_MAX_BPS ?? 0.1,
-);
-const STALE_BPS = 60;
-const RANDOM_CANCEL_PROBABILITY = Number(
-    process.env.RANDOM_CANCEL_PROBABILITY ?? 0.05,
-);
-const TAKER_MAX_QTY = 0.5;
+const MM_EMAIL = process.env.MARKET_MAKER_EMAIL ?? "marketmaker@cryptolattice.com";
+const MM_PASSWORD = process.env.MARKET_MAKER_PASSWORD ?? "MarketMakerPassword123!";
+
+const TICK_MS = Number(process.env.TICK_MS ?? 1500);
+const REAL_PRICE_REFRESH_MS = 10_000;
+const LADDER_LEVELS = Number(process.env.LADDER_LEVELS ?? 8);
+const LADDER_SPREAD_BPS = 20; // 0.20% spread
+const LADDER_PER_LEVEL_BPS = 10; // 0.10% distance per level
+const STALE_BPS = 60; // cancel orders > 0.60% away from target
+const RANDOM_CANCEL_PROBABILITY = Number(process.env.RANDOM_CANCEL_PROBABILITY ?? 0.1);
+
+const MAKER_BASE_QTY = 0.5;
 const TAKER_MIN_QTY = 0.05;
-const MAKER_QTY = 1;
-const MARKET_TICK_OVERRIDES = process.env.MARKET_TICK_OVERRIDES;
-const PRICE_TICK_SIZE = Number(process.env.PRICE_TICK_SIZE ?? 0.01);
+const TAKER_MAX_QTY = 0.25;
+const PRICE_TICK_SIZE = 0.01;
 
-// 2-minute Backpack depth.200ms sample (May 2026). Used as defaults.
-const OBSERVED_CADENCE_MS: Record<string, number> = {
-    BTC_USDC: 391,
-    ETH_USDC: 335,
-    SOL_USDC: 367,
-    XRP_USDC: 401,
-    BNB_USDC: 740,
-    DOGE_USDC: 514,
-    LINK_USDC: 1749,
-    ADA_USDC: 500,
-    AVAX_USDC: 500,
-    TON_USDC: 500,
-};
+let authToken: string | null = null;
+let currentTargetPrice = 150.0;
+let isTicking = false;
 
-interface Ticker {
-    symbol: string;
-    lastPrice: string | null;
+interface DepthLevel {
+    price: number;
+    quantity: number;
 }
 
-interface Depth {
-    bids: [string, string][];
-    asks: [string, string][];
+interface DepthResponse {
+    market: string;
+    bids?: DepthLevel[];
+    asks?: DepthLevel[];
 }
 
 interface OpenOrder {
-    orderId: string;
-    side: "buy" | "sell";
-    price: number | string;
+    id: string;
     market: string;
+    side: "BUY" | "SELL";
+    price: number;
+    quantity: number;
+    filled: number;
+    status: string;
 }
 
-const realPrices = new Map<string, number>();
-const targetSnapshots = new Map<
-    string,
-    { from: number; to: number; startedAt: number }
->();
-
-const DEFAULT_PRICE = 100;
-
-async function fetchTickers(): Promise<Ticker[]> {
-    const { data } = await axios.get<Ticker[]>(`${BASE_URL}/api/v1/tickers`);
-    return data;
+function getAuthHeaders() {
+    return {
+        headers: {
+            Authorization: `Bearer ${authToken}`,
+            "Content-Type": "application/json",
+        },
+    };
 }
 
-function counterpart(sym: string) {
-    return sym.endsWith("_PERP") ? sym.slice(0, -"_PERP".length) : `${sym}_PERP`;
-}
-
-async function refreshRealPrices() {
+async function authenticate(): Promise<void> {
+    console.log(`[MM] Authenticating bot account: ${MM_EMAIL}...`);
     try {
-        const tickers = await fetchTickers();
-        const priceMap = new Map<string, number>();
-        for (const t of tickers) {
-            const v = Number(t.lastPrice);
-            if (Number.isFinite(v) && v > 0) priceMap.set(t.symbol, v);
+        const signinRes = await axios.post(`${BASE_URL}/api/v1/auth/signin`, {
+            email: MM_EMAIL,
+            password: MM_PASSWORD,
+        });
+        if (signinRes.data?.token) {
+            authToken = signinRes.data.token;
+            console.log("[MM] Logged in successfully.");
+            await ensureSufficientBalance();
+            return;
         }
-        const now = Date.now();
-        for (const t of tickers) {
-            const direct = priceMap.get(t.symbol);
-            const fallback = priceMap.get(counterpart(t.symbol));
-            const real = direct ?? fallback ?? DEFAULT_PRICE;
-            const prev = realPrices.get(t.symbol);
-            realPrices.set(t.symbol, real);
-            if (prev === undefined) {
-                targetSnapshots.set(t.symbol, { from: real, to: real, startedAt: now });
-            } else {
-                const snap = targetSnapshots.get(t.symbol);
-                const fromPrice = snap ? rampedPrice(snap, now) : prev;
-                targetSnapshots.set(t.symbol, {
-                    from: fromPrice,
-                    to: real,
-                    startedAt: now,
-                });
-            }
+    } catch {
+        // user may not exist yet, try signup
+    }
+
+    try {
+        console.log("[MM] Account not found. Creating new market maker account...");
+        const signupRes = await axios.post(`${BASE_URL}/api/v1/auth/signup`, {
+            email: MM_EMAIL,
+            password: MM_PASSWORD,
+        });
+        if (signupRes.data?.token) {
+            authToken = signupRes.data.token;
+            console.log("[MM] Account created and authenticated.");
+            await ensureSufficientBalance();
+            return;
         }
     } catch (err) {
-        console.error("refreshRealPrices error:", (err as Error).message);
+        console.error("[MM] Authentication failed:", (err as Error).message);
     }
 }
 
-function rampedPrice(
-    snap: { from: number; to: number; startedAt: number },
-    now: number,
-) {
-    const t = Math.min(1, (now - snap.startedAt) / RAMP_WINDOW_MS);
-    return snap.from + (snap.to - snap.from) * t;
-}
-
-function targetFor(symbol: string): number | null {
-    const snap = targetSnapshots.get(symbol);
-    if (!snap) return null;
-    return rampedPrice(snap, Date.now());
-}
-
-async function getDepth(market: string): Promise<Depth | null> {
+async function ensureSufficientBalance(): Promise<void> {
+    if (!authToken) return;
     try {
-        const { data } = await axios.get<Depth>(
-            `${BASE_URL}/api/v1/depth?symbol=${market}`,
+        const { data } = await axios.get(`${BASE_URL}/api/v1/balance`, getAuthHeaders());
+        const balances = (data.balances ?? []) as { asset: string; available: string }[];
+        const solBal = Number(balances.find((b) => b.asset === "SOL")?.available ?? 0);
+        const usdcBal = Number(balances.find((b) => b.asset === "USDC")?.available ?? 0);
+
+        console.log(`[MM] Balances: ${solBal.toFixed(2)} SOL | ${usdcBal.toFixed(2)} USDC`);
+
+        if (solBal < 100) {
+            console.log("[MM] Depositing initial SOL liquidity...");
+            await axios.post(
+                `${BASE_URL}/api/v1/balance/deposit`,
+                { asset: "SOL", amount: 5000 },
+                getAuthHeaders(),
+            );
+        }
+        if (usdcBal < 10000) {
+            console.log("[MM] Depositing initial USDC liquidity...");
+            await axios.post(
+                `${BASE_URL}/api/v1/balance/deposit`,
+                { asset: "USDC", amount: 1_000_000 },
+                getAuthHeaders(),
+            );
+        }
+    } catch (err) {
+        console.error("[MM] Failed to verify/deposit balance:", (err as Error).message);
+    }
+}
+
+async function fetchLiveSolPrice(): Promise<number> {
+    // 1. Try Binance public spot ticker (free, no auth needed)
+    try {
+        const { data } = await axios.get<{ price: string }>(
+            "https://api.binance.com/api/v3/ticker/price?symbol=SOLUSDC",
+            { timeout: 4000 },
         );
+        const p = Number(data.price);
+        if (Number.isFinite(p) && p > 0) return p;
+    } catch {
+        /* fallback to Coinbase */
+    }
+
+    // 2. Try Coinbase public spot
+    try {
+        const { data } = await axios.get<{ data: { amount: string } }>(
+            "https://api.coinbase.com/v2/prices/SOL-USD/spot",
+            { timeout: 4000 },
+        );
+        const p = Number(data.data.amount);
+        if (Number.isFinite(p) && p > 0) return p;
+    } catch {
+        /* fallback to internal exchange trade */
+    }
+
+    // 3. Try internal recent trades
+    try {
+        const { data } = await axios.get<{ trades: { price: number }[] }>(
+            `${BASE_URL}/api/v1/market/${MARKET}/trades?limit=1`,
+            { timeout: 2000 },
+        );
+        const lastTrade = data.trades?.[0]?.price;
+        if (lastTrade && lastTrade > 0) return lastTrade;
+    } catch {
+        /* fallback */
+    }
+
+    return currentTargetPrice || 150.0;
+}
+
+async function refreshPrice(): Promise<void> {
+    try {
+        const livePrice = await fetchLiveSolPrice();
+        if (Number.isFinite(livePrice) && livePrice > 0) {
+            // Smooth target towards live price
+            currentTargetPrice = Number(livePrice.toFixed(2));
+            console.log(`[MM] Reference ${MARKET} price: $${currentTargetPrice}`);
+        }
+    } catch (err) {
+        console.error("[MM] refreshPrice error:", (err as Error).message);
+    }
+}
+
+async function getDepth(): Promise<DepthResponse | null> {
+    try {
+        const { data } = await axios.get<DepthResponse>(`${BASE_URL}/api/v1/depth/${MARKET}`);
         return data;
     } catch {
         return null;
     }
 }
 
-async function getOpenOrders(market: string): Promise<OpenOrder[]> {
+async function getOpenOrders(): Promise<OpenOrder[]> {
+    if (!authToken) return [];
     try {
-        const { data } = await axios.get<OpenOrder[]>(
-            `${BASE_URL}/api/v1/order/open?userId=${USER_ID}&market=${market}`,
+        const { data } = await axios.get<{ orders: OpenOrder[] }>(
+            `${BASE_URL}/api/v1/orders`,
+            getAuthHeaders(),
         );
-        return data;
+        return (data.orders ?? []).filter(
+            (o) => (o.status === "OPEN" || o.status === "PARTIALLY_FILLED") && o.market === MARKET,
+        );
     } catch {
         return [];
     }
 }
 
-function fmtPrice(p: number) {
-    return p.toFixed(2);
-}
-
-function fmtQty(q: number) {
-    return q.toFixed(3);
-}
-
-function quantizeToTick(price: number): number {
-    const ticks = Math.round(price / PRICE_TICK_SIZE);
-    return ticks * PRICE_TICK_SIZE;
-}
-
-async function placeOrder(
-    market: string,
-    side: "buy" | "sell",
-    price: number,
-    quantity: number,
-) {
+async function placeOrder(side: "BUY" | "SELL", price: number, quantity: number): Promise<void> {
+    if (!authToken) return;
     try {
-        await axios.post(`${BASE_URL}/api/v1/order`, {
-            market,
-            price: fmtPrice(price),
-            quantity: fmtQty(quantity),
-            side,
-            userId: USER_ID,
-        });
+        await axios.post(
+            `${BASE_URL}/api/v1/orders`,
+            {
+                market: MARKET,
+                side,
+                price: Number(price.toFixed(2)),
+                quantity: Number(quantity.toFixed(3)),
+            },
+            getAuthHeaders(),
+        );
     } catch {
-        /* engine may reject — ignore */
+        // ignored
     }
 }
 
-async function cancelOrder(market: string, orderId: string) {
+async function cancelOrder(orderId: string): Promise<void> {
+    if (!authToken) return;
     try {
-        await axios.delete(`${BASE_URL}/api/v1/order`, {
-            data: { orderId, market },
-        });
+        await axios.delete(`${BASE_URL}/api/v1/orders/${encodeURIComponent(orderId)}`, getAuthHeaders());
     } catch {
-        /* ignore */
+        // ignored
     }
 }
 
-function bestBidAsk(depth: Depth | null): {
-    bid: number | null;
-    ask: number | null;
-} {
-    if (!depth) return { bid: null, ask: null };
-    let bid: number | null = null;
-    let ask: number | null = null;
-    for (const [p] of depth.bids) {
-        const v = Number(p);
-        if (bid === null || v > bid) bid = v;
-    }
-    for (const [p] of depth.asks) {
-        const v = Number(p);
-        if (ask === null || v < ask) ask = v;
-    }
-    return { bid, ask };
+function quantize(price: number): number {
+    return Math.round(price / PRICE_TICK_SIZE) * PRICE_TICK_SIZE;
 }
 
-async function tickMarket(market: string) {
-    const target = targetFor(market);
-    if (!target || target <= 0) return;
+async function tickMarket(): Promise<void> {
+    if (isTicking || !authToken) return;
+    isTicking = true;
 
-    const [depth, openOrders] = await Promise.all([
-        getDepth(market),
-        getOpenOrders(market),
-    ]);
-
-    const { bid, ask } = bestBidAsk(depth);
-    const localMid =
-        bid !== null && ask !== null ? (bid + ask) / 2 : (bid ?? ask ?? target);
-    const ladderCenter =
-        bid !== null && ask !== null ? localMid : localMid * 0.7 + target * 0.3;
-
-    const staleAbs = (target * STALE_BPS) / 10_000;
-    const cancels: Promise<void>[] = [];
-    for (const o of openOrders) {
-        const p = Number(o.price);
-        const tooFar = Math.abs(p - target) > staleAbs;
-        const wrongSide =
-            (o.side === "buy" && p >= target) || (o.side === "sell" && p <= target);
-        if (tooFar || wrongSide || Math.random() < RANDOM_CANCEL_PROBABILITY) {
-            cancels.push(cancelOrder(market, o.orderId));
-        }
-    }
-
-    const places: Promise<void>[] = [];
-
-    // taker push toward target — causes trades + price move
-    const diff = target - localMid;
-    const driftBps = (Math.abs(diff) / target) * 10_000;
-    if (driftBps > 2 && bid !== null && ask !== null) {
-        const qty = TAKER_MIN_QTY + Math.random() * (TAKER_MAX_QTY - TAKER_MIN_QTY);
-        if (diff > 0) {
-            // need to push up — buy at ask
-            places.push(placeOrder(market, "buy", ask * 1.0005, qty));
-        } else {
-            places.push(placeOrder(market, "sell", bid * 0.9995, qty));
-        }
-    } else {
-        // even at target — random taker churn for volatility
-        if (bid !== null && ask !== null && Math.random() < 0.5) {
-            const qty = TAKER_MIN_QTY + Math.random() * 0.15;
-            const side: "buy" | "sell" = Math.random() < 0.5 ? "buy" : "sell";
-            const price = side === "buy" ? ask : bid;
-            places.push(placeOrder(market, side, price, qty));
-        }
-    }
-
-    // refresh maker ladder around target
-    const spread = (target * LADDER_SPREAD_BPS) / 10_000;
-    const rawStep = spread / LADDER_LEVELS;
-    const maxPerLevelStep = (ladderCenter * LADDER_PER_LEVEL_MAX_BPS) / 10_000;
-    const step = Math.max(
-        PRICE_TICK_SIZE,
-        Math.min(rawStep, Math.max(maxPerLevelStep, PRICE_TICK_SIZE)),
-    );
-    for (let i = 1; i <= LADDER_LEVELS; i++) {
-        const perLevelJitter = 1 + (Math.random() - 0.5) * 0.08;
-        const offset = step * i * perLevelJitter;
-        const bidPrice = quantizeToTick(ladderCenter - offset);
-        const askPrice = quantizeToTick(ladderCenter + offset);
-        if (bidPrice <= 0 || askPrice <= 0 || bidPrice >= askPrice) continue;
-        const qty = MAKER_QTY * (0.5 + Math.random());
-        places.push(placeOrder(market, "buy", bidPrice, qty));
-        places.push(placeOrder(market, "sell", askPrice, qty));
-    }
-
-    await Promise.allSettled([...cancels, ...places]);
-}
-
-function parseTickOverrides(raw: string | undefined): Record<string, number> {
-    if (!raw) return {};
     try {
-        const parsed = JSON.parse(raw) as Record<string, unknown>;
-        const out: Record<string, number> = {};
-        for (const [market, value] of Object.entries(parsed)) {
-            const ms = Number(value);
-            if (Number.isFinite(ms) && ms > 0) out[market] = ms;
+        const target = currentTargetPrice;
+        if (!target || target <= 0) return;
+
+        const [depth, openOrders] = await Promise.all([getDepth(), getOpenOrders()]);
+
+        const bids = depth?.bids ?? [];
+        const asks = depth?.asks ?? [];
+        const bestBid = bids.length ? Math.max(...bids.map((b) => b.price)) : null;
+        const bestAsk = asks.length ? Math.min(...asks.map((a) => a.price)) : null;
+
+        const localMid =
+            bestBid !== null && bestAsk !== null
+                ? (bestBid + bestAsk) / 2
+                : (bestBid ?? bestAsk ?? target);
+
+        // 1. Cancel stale / crossing orders
+        const staleAbs = (target * STALE_BPS) / 10_000;
+        const cancelPromises: Promise<void>[] = [];
+
+        for (const o of openOrders) {
+            const p = o.price;
+            const tooFar = Math.abs(p - target) > staleAbs;
+            const wrongSide =
+                (o.side === "BUY" && p >= target) || (o.side === "SELL" && p <= target);
+            if (tooFar || wrongSide || Math.random() < RANDOM_CANCEL_PROBABILITY) {
+                cancelPromises.push(cancelOrder(o.id));
+            }
         }
-        return out;
-    } catch {
-        return {};
+        await Promise.allSettled(cancelPromises);
+
+        const placePromises: Promise<void>[] = [];
+
+        // 2. Taker churn (executes small trades to produce candles and live trades on UI)
+        if (bestBid !== null && bestAsk !== null && Math.random() < 0.4) {
+            const takerQty = TAKER_MIN_QTY + Math.random() * (TAKER_MAX_QTY - TAKER_MIN_QTY);
+            const side: "BUY" | "SELL" = Math.random() < 0.5 ? "BUY" : "SELL";
+            const takerPrice = side === "BUY" ? bestAsk : bestBid;
+            placePromises.push(placeOrder(side, takerPrice, takerQty));
+        }
+
+        // 3. Maker ladder around target price
+        const halfSpread = (target * LADDER_SPREAD_BPS) / 20_000;
+        const step = (target * LADDER_PER_LEVEL_BPS) / 10_000;
+
+        for (let i = 1; i <= LADDER_LEVELS; i++) {
+            const jitter = 1 + (Math.random() - 0.5) * 0.05;
+            const offset = (halfSpread + step * (i - 1)) * jitter;
+
+            const bidPrice = quantize(localMid - offset);
+            const askPrice = quantize(localMid + offset);
+
+            if (bidPrice > 0 && askPrice > bidPrice) {
+                const qty = MAKER_BASE_QTY * (0.8 + Math.random() * 0.8) * (1 + i * 0.2);
+                placePromises.push(placeOrder("BUY", bidPrice, qty));
+                placePromises.push(placeOrder("SELL", askPrice, qty));
+            }
+        }
+
+        await Promise.allSettled(placePromises);
+    } catch (err) {
+        console.error("[MM] tick error:", (err as Error).message);
+    } finally {
+        isTicking = false;
     }
-}
-
-function marketTickMs(
-    market: string,
-    overrides: Record<string, number>,
-    defaultMs: number,
-): number {
-    const fromOverride = overrides[market];
-    if (fromOverride) return fromOverride;
-    return OBSERVED_CADENCE_MS[market] ?? defaultMs;
-}
-
-function startMarketLoop(
-    market: string,
-    baseTickMs: number,
-    initialDelayMs = 0,
-) {
-    const run = async () => {
-        try {
-            await tickMarket(market);
-        } catch (err) {
-            console.error(`tick ${market}:`, (err as Error).message);
-        }
-        const jitter = Math.floor(baseTickMs * 0.12 * Math.random());
-        setTimeout(run, baseTickMs + jitter);
-    };
-    setTimeout(run, initialDelayMs);
 }
 
 async function main() {
-    await new Promise((r) => setTimeout(r, 5000));
-    await refreshRealPrices();
-    setInterval(refreshRealPrices, REAL_PRICE_REFRESH_MS);
+    console.log(`Starting Solana Market Maker for ${MARKET}...`);
+    await authenticate();
+    await refreshPrice();
 
-    const markets = Array.from(realPrices.keys());
-    const tickOverrides = parseTickOverrides(MARKET_TICK_OVERRIDES);
-    console.log(`market-maker starting on ${markets.length} markets`);
-    for (let i = 0; i < markets.length; i++) {
-        const market = markets[i]!;
-        const tickMs = marketTickMs(market, tickOverrides, TICK_MS);
-        const initialDelayMs = i * 40;
-        console.log(`loop ${market} every ~${tickMs}ms`);
-        startMarketLoop(market, tickMs, initialDelayMs);
-    }
+    setInterval(refreshPrice, REAL_PRICE_REFRESH_MS);
+    setInterval(tickMarket, TICK_MS);
+
+    // Initial tick
+    await tickMarket();
 }
 
 main().catch((err) => {
-    console.error("fatal:", err);
+    console.error("Fatal:", err);
     process.exit(1);
 });
