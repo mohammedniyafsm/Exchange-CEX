@@ -1,6 +1,7 @@
 import { prisma } from "@repo/db";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import { RedisManager } from "../../redis/redis.js";
 
 function getJwtSecret(): string {
   const secret = process.env.JWT_SECRET;
@@ -43,6 +44,19 @@ export const authService = {
           password: hashedPassword
         }
       });
+
+      try {
+        await RedisManager.getInstance().sendAndWait({
+          type: "DEPOSIT",
+          data: { userId: user.id, asset: "SOL", amount: 100 }
+        });
+        await RedisManager.getInstance().sendAndWait({
+          type: "DEPOSIT",
+          data: { userId: user.id, asset: "USDC", amount: 25000 }
+        });
+      } catch (depositErr) {
+        console.warn("Failed to seed initial demo balance:", depositErr);
+      }
 
       const token = jwt.sign(
         { id: user.id, email: user.email },
