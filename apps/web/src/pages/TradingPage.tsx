@@ -49,6 +49,7 @@ export default function TradingPage() {
   const [quantity, setQuantity] = useState('0')
   const [percent, setPercent] = useState(0)
   const [marketTab, setMarketTab] = useState<'Book' | 'Trades'>('Book')
+  const [bookViewMode, setBookViewMode] = useState<'both' | 'asks' | 'bids'>('both')
   const [chartRange, setChartRange] = useState('All')
   const [sidebarPanel, setSidebarPanel] = useState<SidebarPanel | null>(null)
   const [token, setToken] = useState<string | null>(() => getAccessToken())
@@ -76,7 +77,9 @@ export default function TradingPage() {
   const totalAskDepth = asks.reduce((total, row) => total + row.size, 0)
   const totalBidDepth = bids.reduce((total, row) => total + row.size, 0)
   const totalDepth = totalAskDepth + totalBidDepth
-  const bidDepthPercent = totalDepth ? Math.round(totalBidDepth / totalDepth * 100) : 0
+  const maxAskTotal = useMemo(() => Math.max(...asks.map((r) => r.total), 1), [asks])
+  const maxBidTotal = useMemo(() => Math.max(...bids.map((r) => r.total), 1), [bids])
+  const bidDepthPercent = totalDepth ? Math.round(totalBidDepth / totalDepth * 100) : 50
   const dayCandles = candles.filter((candle) => candle.t >= Date.now() - 24 * 60 * 60 * 1000)
   const dayOpen = dayCandles[0]?.open
   const dayChange = dayOpen && currentPrice != null ? ((currentPrice - dayOpen) / dayOpen) * 100 : null
@@ -404,19 +407,44 @@ export default function TradingPage() {
                 {marketTab === 'Book' ? (
                   <>
                     <div className="book-tools">
-                      <span className="book-view-options"><i>☷</i><i>▥</i><i>☷</i><LockKeyhole size={13} /></span>
+                      <span className="book-view-options">
+                        <button type="button" className={`book-mode-btn ${bookViewMode === 'both' ? 'active' : ''}`} title="Both bids & asks" onClick={() => setBookViewMode('both')}>☷</button>
+                        <button type="button" className={`book-mode-btn red ${bookViewMode === 'asks' ? 'active' : ''}`} title="Asks only" onClick={() => setBookViewMode('asks')}>▥</button>
+                        <button type="button" className={`book-mode-btn green ${bookViewMode === 'bids' ? 'active' : ''}`} title="Bids only" onClick={() => setBookViewMode('bids')}>☷</button>
+                        <LockKeyhole size={13} className="book-lock-icon" />
+                      </span>
                       <span className="book-step">− &nbsp; .01 &nbsp; <b>＋</b></span>
                     </div>
                     <div className="book-column-head"><span>Price (USDC)</span><span>Size (SOL)</span><span>Total (SOL)</span></div>
-                    <div className="book-rows">
-                      {asks.slice().reverse().map((row) => <BookLine key={row.price} row={row} type="ask" />)}
-                    </div>
-                    <div className="book-mid-price"><strong>{currentPrice == null ? '—' : format(currentPrice)}</strong><span>⌄</span></div>
-                    <div className="book-rows">
-                      {bids.map((row) => <BookLine key={row.price} row={row} type="bid" />)}
+                    <div className="book-content-scroll">
+                      {(bookViewMode === 'both' || bookViewMode === 'asks') && (
+                        <div className="book-rows asks">
+                          {(bookViewMode === 'both' ? asks.slice(0, 11) : asks.slice(0, 22)).reverse().map((row) => (
+                            <BookLine key={`ask-${row.price}`} row={row} type="ask" maxTotal={maxAskTotal} />
+                          ))}
+                        </div>
+                      )}
+                      <div className="book-mid-price">
+                        <strong>{currentPrice == null ? '—' : format(currentPrice)}</strong>
+                        <span>⌄</span>
+                      </div>
+                      {(bookViewMode === 'both' || bookViewMode === 'bids') && (
+                        <div className="book-rows bids">
+                          {(bookViewMode === 'both' ? bids.slice(0, 11) : bids.slice(0, 22)).map((row) => (
+                            <BookLine key={`bid-${row.price}`} row={row} type="bid" maxTotal={maxBidTotal} />
+                          ))}
+                        </div>
+                      )}
                     </div>
                     {(asks.length === 0 && bids.length === 0) && <span className="book-empty">{marketError || 'Waiting for order book data…'}</span>}
-                    <div className="book-depth-bar"><span>{bidDepthPercent}%</span><i style={{ background: `linear-gradient(110deg, rgba(0,153,107,.25) 0 ${bidDepthPercent}%, rgba(194,47,58,.28) ${bidDepthPercent}% 100%)` }} /><b>{100 - bidDepthPercent}%</b></div>
+                    <div className="book-depth-bar">
+                      <span>{bidDepthPercent}%</span>
+                      <div className="depth-bar-track">
+                        <div className="depth-bar-bid" style={{ width: `${bidDepthPercent}%` }} />
+                        <div className="depth-bar-ask" style={{ width: `${100 - bidDepthPercent}%` }} />
+                      </div>
+                      <b>{100 - bidDepthPercent}%</b>
+                    </div>
                   </>
                 ) : (
                   <div className="trades-view">
@@ -478,8 +506,8 @@ export default function TradingPage() {
   )
 }
 
-function BookLine({ row, type }: { row: BookRow; type: 'ask' | 'bid' }) {
-  const width = Math.min(100, (row.total / (type === 'ask' ? 900 : 750)) * 100)
+function BookLine({ row, type, maxTotal }: { row: BookRow; type: 'ask' | 'bid'; maxTotal: number }) {
+  const width = Math.min(100, Math.max(2, (row.total / (maxTotal || 1)) * 100))
   return <div className={`book-line ${type}`}>
     <div className="book-depth-fill" style={{ width: `${width}%` }} />
     <span>{format(row.price)}</span><span>{format(row.size, 2)}</span><span>{format(row.total, 2)}</span>
